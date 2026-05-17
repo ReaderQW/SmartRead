@@ -65,9 +65,11 @@ fun MainAppScaffold() {
     val currentRoute = currentNav?.destination
 
     Scaffold(
+        // 底部导航
         bottomBar = {
             NavigationBar {
                 navList.forEach { item ->
+                    // 是否选中
                     val isSelect = currentRoute?.hierarchy?.any { it.route == item.route } == true
                     NavigationBarItem(
                         selected = isSelect,
@@ -86,7 +88,9 @@ fun MainAppScaffold() {
                 }
             }
         }
-    ) { paddingValues ->
+    ) {
+        // 页面路由
+        paddingValues ->
         // 页面路由容器
         NavHost(
             navController = navCtrl,
