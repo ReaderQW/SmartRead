@@ -9,7 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.smartread.presentation.reader.MainAppScaffold
+import com.example.smartread.ui.main.MainAppScaffold
 import com.example.smartread.ui.theme.SmartReadTheme
 import dagger.hilt.android.AndroidEntryPoint
 

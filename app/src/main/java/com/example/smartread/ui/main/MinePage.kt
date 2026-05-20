@@ -1,4 +1,4 @@
-package com.example.smartread.presentation.reader
+package com.example.smartread.ui.main
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
