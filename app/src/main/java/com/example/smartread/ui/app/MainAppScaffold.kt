@@ -1,4 +1,4 @@
-package com.example.smartread.ui.main
+package com.example.smartread.ui.app
 
 
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +22,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.smartread.ui.app.screens.BookShelfPage
+import com.example.smartread.ui.app.screens.HomePage
+import com.example.smartread.ui.app.screens.MinePage
+import com.example.smartread.ui.app.screens.SearchPage
 
 // 定义四个导航页面路由
 sealed class BottomNavItem(

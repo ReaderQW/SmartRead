@@ -9,8 +9,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.smartread.ui.main.MainAppScaffold
-import com.example.smartread.ui.theme.SmartReadTheme
+import com.example.smartread.ui.app.MainAppScaffold
+import com.example.smartread.ui.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            SmartReadTheme {
+            AppTheme {
                 MainAppScaffold()
             }
         }
@@ -36,7 +36,7 @@ private const val deviceScreenSize = "spec:width=360dp,height=640dp,dpi=480"
 )
 @Composable
 fun SmartReadAppPreview() {
-    SmartReadTheme {
+    AppTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
