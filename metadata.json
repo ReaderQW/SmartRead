@@ -1,0 +1,6 @@
+{
+  "name": "SmartRead",
+  "description": "An AIGC-driven immersive reading system with Socratic co-reading, OCR highlighters, notebook archives, automatic brain mapping, and interactive blind box reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
