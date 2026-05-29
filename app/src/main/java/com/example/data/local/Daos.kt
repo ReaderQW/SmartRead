@@ -1,103 +1,145 @@
 package com.example.data.local
 
-import androidx.room.*
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Transaction
+import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface BookDao {
     @Query("SELECT * FROM books ORDER BY id ASC")
-    fun getAllBooks(): Flow<List<Book>>
+    fun observeBooks(): Flow<List<BookEntity>>
 
     @Query("SELECT * FROM books WHERE id = :id")
-    suspend fun getBookById(id: Int): Book?
+    suspend fun getBookById(id: Int): BookEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertBook(book: Book)
+    suspend fun insertBook(book: BookEntity): Long
 
     @Update
-    suspend fun updateBook(book: Book)
+    suspend fun updateBook(book: BookEntity)
 
     @Delete
-    suspend fun deleteBook(book: Book)
+    suspend fun deleteBook(book: BookEntity)
+}
+
+@Dao
+interface BookPageDao {
+    @Query("SELECT * FROM book_pages WHERE bookId = :bookId ORDER BY pageIndex ASC")
+    fun observePages(bookId: Int): Flow<List<BookPageEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPage(page: BookPageEntity): Long
 }
 
 @Dao
 interface HighlightDao {
     @Query("SELECT * FROM highlights WHERE bookId = :bookId ORDER BY timestamp DESC")
-    fun getHighlightsForBook(bookId: Int): Flow<List<Highlight>>
+    fun observeHighlightsForBook(bookId: Int): Flow<List<HighlightEntity>>
 
     @Query("SELECT * FROM highlights WHERE bookId = :bookId ORDER BY timestamp DESC")
-    suspend fun getHighlightsForBookSync(bookId: Int): List<Highlight>
+    suspend fun getHighlightsForBook(bookId: Int): List<HighlightEntity>
 
     @Query("SELECT * FROM highlights WHERE id = :id")
-    suspend fun getHighlightById(id: Int): Highlight?
+    suspend fun getHighlightById(id: Int): HighlightEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertHighlight(highlight: Highlight): Long
+    suspend fun insertHighlight(highlight: HighlightEntity): Long
 
     @Delete
-    suspend fun deleteHighlight(highlight: Highlight)
+    suspend fun deleteHighlight(highlight: HighlightEntity)
 }
 
 @Dao
 interface NoteDao {
     @Query("SELECT * FROM notes WHERE bookId = :bookId ORDER BY timestamp DESC")
-    fun getNotesForBook(bookId: Int): Flow<List<Note>>
+    fun observeNotesForBook(bookId: Int): Flow<List<NoteEntity>>
 
     @Query("SELECT * FROM notes WHERE bookId = :bookId ORDER BY timestamp DESC")
-    suspend fun getNotesForBookSync(bookId: Int): List<Note>
+    suspend fun getNotesForBook(bookId: Int): List<NoteEntity>
 
     @Query("SELECT * FROM notes ORDER BY timestamp DESC")
-    fun getAllNotes(): Flow<List<Note>>
+    fun observeAllNotes(): Flow<List<NoteEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNote(note: Note): Long
+    suspend fun insertNote(note: NoteEntity): Long
 
     @Delete
-    suspend fun deleteNote(note: Note)
+    suspend fun deleteNote(note: NoteEntity)
 }
 
 @Dao
 interface ChatDao {
-    @Query("SELECT * FROM chat_messages WHERE bookId = :bookId ORDER BY timestamp ASC")
-    fun getChatMessagesForBook(bookId: Int): Flow<List<ChatMessage>>
-
-    @Query("SELECT * FROM chat_messages WHERE bookId = :bookId ORDER BY timestamp ASC")
-    suspend fun getChatMessagesForBookSync(bookId: Int): List<ChatMessage>
+    @Query("SELECT * FROM chat_sessions WHERE bookId = :bookId ORDER BY createdAt DESC LIMIT 1")
+    suspend fun getLatestSessionForBook(bookId: Int): ChatSessionEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertChatMessage(message: ChatMessage)
+    suspend fun insertSession(session: ChatSessionEntity): Long
+
+    @Query("SELECT * FROM chat_messages WHERE bookId = :bookId ORDER BY timestamp ASC")
+    fun observeMessagesForBook(bookId: Int): Flow<List<ChatMessageEntity>>
+
+    @Query("SELECT * FROM chat_messages WHERE bookId = :bookId ORDER BY timestamp ASC")
+    suspend fun getMessagesForBook(bookId: Int): List<ChatMessageEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: ChatMessageEntity): Long
 
     @Query("DELETE FROM chat_messages WHERE bookId = :bookId")
-    suspend fun clearChatMessagesForBook(bookId: Int)
+    suspend fun clearMessagesForBook(bookId: Int)
+}
+
+@Dao
+interface ReportDao {
+    @Query("SELECT * FROM reading_reports WHERE bookId = :bookId")
+    fun observeReport(bookId: Int): Flow<ReadingReportEntity?>
+
+    @Query("SELECT * FROM reading_reports WHERE bookId = :bookId")
+    suspend fun getReport(bookId: Int): ReadingReportEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReport(report: ReadingReportEntity): Long
+}
+
+@Dao
+interface EmbeddingDao {
+    @Query("SELECT * FROM embeddings WHERE bookId = :bookId")
+    suspend fun getEmbeddings(bookId: Int): List<EmbeddingEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEmbedding(embedding: EmbeddingEntity)
 }
 
 @Dao
 interface KnowledgeDao {
     @Query("SELECT * FROM knowledge_nodes")
-    fun getAllNodes(): Flow<List<KnowledgeNode>>
+    fun observeAllNodes(): Flow<List<KnowledgeNodeEntity>>
 
     @Query("SELECT * FROM knowledge_edges")
-    fun getAllEdges(): Flow<List<KnowledgeEdge>>
+    fun observeAllEdges(): Flow<List<KnowledgeEdgeEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNode(node: KnowledgeNode)
+    suspend fun insertNode(node: KnowledgeNodeEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEdge(edge: KnowledgeEdge)
+    suspend fun insertEdge(edge: KnowledgeEdgeEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertNodes(nodes: List<KnowledgeNode>)
+    suspend fun insertNodes(nodes: List<KnowledgeNodeEntity>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertEdges(edges: List<KnowledgeEdge>)
+    suspend fun insertEdges(edges: List<KnowledgeEdgeEntity>)
 
     @Query("DELETE FROM knowledge_nodes")
     suspend fun clearNodes()
 
     @Query("DELETE FROM knowledge_edges")
     suspend fun clearEdges()
-    
+
     @Transaction
     suspend fun clearGraph() {
         clearNodes()

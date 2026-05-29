@@ -41,10 +41,12 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.local.Book
-import com.example.data.local.Highlight
-import com.example.data.local.Note
-import com.example.data.repository.ReadingReport
+import com.example.domain.model.Book
+import com.example.domain.model.Highlight
+import com.example.domain.model.KnowledgeEdge
+import com.example.domain.model.KnowledgeNode
+import com.example.domain.model.Note
+import com.example.domain.model.ReadingReport
 import com.example.utils.BookDummyData
 import kotlinx.coroutines.launch
 import kotlin.math.cos
@@ -503,13 +505,13 @@ fun NotesListView(notes: List<Note>, onDelete: (Note) -> Unit) {
 // --- TAB 2: Dynamic Canvas Interactive Mind map Graph ---
 @Composable
 fun KnowledgeGraphView(
-    nodes: List<com.example.data.local.KnowledgeNode>,
-    edges: List<com.example.data.local.KnowledgeEdge>
+    nodes: List<KnowledgeNode>,
+    edges: List<KnowledgeEdge>
 ) {
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var scale by remember { mutableFloatStateOf(1f) }
-    var selectedNodeInfo by remember { mutableStateOf<com.example.data.local.KnowledgeNode?>(null) }
+    var selectedNodeInfo by remember { mutableStateOf<KnowledgeNode?>(null) }
 
     // Assign interactive physics-like center layouts for books
     val mockPositions = remember(nodes) {

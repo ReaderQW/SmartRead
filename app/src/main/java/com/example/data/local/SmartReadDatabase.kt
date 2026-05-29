@@ -7,22 +7,29 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [
-        Book::class,
-        Highlight::class,
-        Note::class,
-        ChatMessage::class,
-        KnowledgeNode::class,
-        KnowledgeEdge::class
+        BookEntity::class,
+        BookPageEntity::class,
+        HighlightEntity::class,
+        NoteEntity::class,
+        ChatSessionEntity::class,
+        ChatMessageEntity::class,
+        ReadingReportEntity::class,
+        EmbeddingEntity::class,
+        KnowledgeNodeEntity::class,
+        KnowledgeEdgeEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class SmartReadDatabase : RoomDatabase() {
 
     abstract fun bookDao(): BookDao
+    abstract fun bookPageDao(): BookPageDao
     abstract fun highlightDao(): HighlightDao
     abstract fun noteDao(): NoteDao
     abstract fun chatDao(): ChatDao
+    abstract fun reportDao(): ReportDao
+    abstract fun embeddingDao(): EmbeddingDao
     abstract fun knowledgeDao(): KnowledgeDao
 
     companion object {
@@ -36,7 +43,7 @@ abstract class SmartReadDatabase : RoomDatabase() {
                     SmartReadDatabase::class.java,
                     "smart_read_db"
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(true)
                     .build()
                 INSTANCE = instance
                 instance

@@ -3,19 +3,61 @@ package com.example.presentation
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.local.*
-import com.example.data.repository.ReadingReport
-import com.example.data.repository.SmartReadRepository
+import com.example.data.local.SmartReadDatabase
+import com.example.data.remote.AigcRemoteDataSource
+import com.example.data.repository.BookRepositoryImpl
+import com.example.data.repository.ChatRepositoryImpl
+import com.example.data.repository.KnowledgeRepositoryImpl
+import com.example.data.repository.NoteRepositoryImpl
+import com.example.data.repository.ReaderRepositoryImpl
+import com.example.data.repository.ReportRepositoryImpl
+import com.example.data.vector.VectorStore
+import com.example.domain.model.Book
+import com.example.domain.model.ChatMessage
+import com.example.domain.model.Highlight
+import com.example.domain.model.KnowledgeEdge
+import com.example.domain.model.KnowledgeNode
+import com.example.domain.model.Note
+import com.example.domain.model.ReadingReport
+import com.example.domain.usecase.GenerateReportUseCase
+import com.example.domain.usecase.SaveHighlightUseCase
+import com.example.domain.usecase.SaveNoteUseCase
+import com.example.domain.usecase.SendSocraticMessageUseCase
 import com.example.utils.BookDummyData
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SmartReadViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = SmartReadDatabase.getDatabase(application)
-    private val repository = SmartReadRepository(db)
+    private val aigcRemoteDataSource = AigcRemoteDataSource()
+    private val vectorStore = VectorStore(db.embeddingDao())
+    private val knowledgeRepository = KnowledgeRepositoryImpl(db.knowledgeDao(), vectorStore)
+    private val bookRepository = BookRepositoryImpl(db.bookDao(), db.knowledgeDao())
+    private val readerRepository = ReaderRepositoryImpl(db.highlightDao(), knowledgeRepository)
+    private val noteRepository = NoteRepositoryImpl(db.noteDao(), aigcRemoteDataSource, knowledgeRepository)
+    private val chatRepository = ChatRepositoryImpl(db.chatDao(), aigcRemoteDataSource, knowledgeRepository)
+    private val reportRepository = ReportRepositoryImpl(
+        db.reportDao(),
+        db.noteDao(),
+        db.highlightDao(),
+        db.chatDao(),
+        aigcRemoteDataSource
+    )
 
-    // --- Core states ---
+    private val saveHighlightUseCase = SaveHighlightUseCase(readerRepository)
+    private val saveNoteUseCase = SaveNoteUseCase(noteRepository)
+    private val sendSocraticMessageUseCase = SendSocraticMessageUseCase(chatRepository)
+    private val generateReportUseCase = GenerateReportUseCase(reportRepository)
+    private val lastProgressByBook = mutableMapOf<Int, Float>()
+
     private val _currentBookId = MutableStateFlow<Int?>(null)
     val currentBookId: StateFlow<Int?> = _currentBookId.asStateFlow()
 
@@ -28,61 +70,54 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isAiLoading = MutableStateFlow(false)
     val isAiLoading: StateFlow<Boolean> = _isAiLoading.asStateFlow()
 
-    // Socratic Chat open / closed
     private val _isFloatingAssistantOpen = MutableStateFlow(false)
     val isFloatingAssistantOpen: StateFlow<Boolean> = _isFloatingAssistantOpen.asStateFlow()
 
-    // Live OCR State
     private val _isOcrScanning = MutableStateFlow(false)
     val isOcrScanning: StateFlow<Boolean> = _isOcrScanning.asStateFlow()
 
     private val _scannedOcrText = MutableStateFlow<String?>(null)
     val scannedOcrText: StateFlow<String?> = _scannedOcrText.asStateFlow()
 
-    // Blind box report
     private val _activeReport = MutableStateFlow<ReadingReport?>(null)
     val activeReport: StateFlow<ReadingReport?> = _activeReport.asStateFlow()
 
-    // Database Flows
-    val allBooks: StateFlow<List<Book>> = repository.allBooks
+    val allBooks: StateFlow<List<Book>> = bookRepository.allBooks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val allNotes: StateFlow<List<Note>> = repository.allNotes
+    val allNotes: StateFlow<List<Note>> = noteRepository.allNotes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val knowledgeNodes: StateFlow<List<KnowledgeNode>> = repository.allNodes
+    val knowledgeNodes: StateFlow<List<KnowledgeNode>> = knowledgeRepository.allNodes
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val knowledgeEdges: StateFlow<List<KnowledgeEdge>> = repository.allEdges
+    val knowledgeEdges: StateFlow<List<KnowledgeEdge>> = knowledgeRepository.allEdges
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Book-specific Flow switchers
     val highlightsForCurrentBook: StateFlow<List<Highlight>> = _currentBookId
         .flatMapLatest { id ->
-            if (id != null) repository.getHighlightsForBook(id) else flowOf(emptyList())
+            if (id != null) readerRepository.getHighlightsForBook(id) else flowOf(emptyList())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val notesForCurrentBook: StateFlow<List<Note>> = _currentBookId
         .flatMapLatest { id ->
-            if (id != null) repository.getNotesForBook(id) else flowOf(emptyList())
+            if (id != null) noteRepository.getNotesForBook(id) else flowOf(emptyList())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val chatMessagesForCurrentBook: StateFlow<List<ChatMessage>> = _currentBookId
         .flatMapLatest { id ->
-            if (id != null) repository.getChatMessagesForBook(id) else flowOf(emptyList())
+            if (id != null) chatRepository.getChatMessagesForBook(id) else flowOf(emptyList())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
-        // Build initial shelf on startup
         viewModelScope.launch {
-            repository.seedInitialBooks()
+            bookRepository.seedInitialBooks()
         }
     }
 
-    // --- Book Navigation ---
     fun selectBook(bookId: Int?) {
         _currentBookId.value = bookId
         _currentPageIndex.value = 0
@@ -113,15 +148,21 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateBookProgress(progress: Float) {
         val bookId = _currentBookId.value ?: return
+        val normalizedProgress = progress.coerceIn(0f, 1f)
+        val lastProgress = lastProgressByBook[bookId]
+        if (lastProgress != null && kotlin.math.abs(lastProgress - normalizedProgress) < 0.001f) {
+            return
+        }
+        lastProgressByBook[bookId] = normalizedProgress
+
         viewModelScope.launch {
-            val book = repository.getBookById(bookId)
-            if (book != null) {
-                repository.updateBook(book.copy(progress = progress))
+            val book = bookRepository.getBookById(bookId)
+            if (book != null && kotlin.math.abs(book.progress - normalizedProgress) >= 0.001f) {
+                bookRepository.updateBook(book.copy(progress = normalizedProgress))
             }
         }
     }
 
-    // --- Highlight selections ---
     fun selectTextSelection(text: String) {
         _selectedText.value = text
     }
@@ -136,28 +177,17 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         if (text.isEmpty()) return
 
         viewModelScope.launch {
-            // Emulate basic canvas coordinates in a simulated grid
-            repository.addHighlight(
-                bookId = bookId,
-                pageIndex = _currentPageIndex.value,
-                text = text,
-                startX = (10..50).random().toFloat(),
-                startY = (100..200).random().toFloat(),
-                endX = (200..350).random().toFloat(),
-                endY = (300..450).random().toFloat(),
-                colorHex = colorHex
-            )
+            saveHighlightUseCase(bookId, _currentPageIndex.value, text, colorHex)
             _selectedText.value = ""
         }
     }
 
     fun deleteHighlight(highlight: Highlight) {
         viewModelScope.launch {
-            repository.deleteHighlight(highlight)
+            readerRepository.deleteHighlight(highlight)
         }
     }
 
-    // --- Custom Socratic Chat ---
     fun setFloatingAssistantOpen(open: Boolean) {
         _isFloatingAssistantOpen.value = open
     }
@@ -165,8 +195,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     fun sendSocraticMessage(userMsg: String) {
         val bookId = _currentBookId.value ?: return
         if (userMsg.trim().isEmpty()) return
-        
-        // Excerpt or highlight context fallback
+
         var contextText = _selectedText.value
         if (contextText.isEmpty()) {
             val bookExcerpts = BookDummyData.excerpts[bookId] ?: emptyList()
@@ -176,19 +205,18 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
         _isAiLoading.value = true
         viewModelScope.launch {
-            val book = repository.getBookById(bookId)
+            val book = bookRepository.getBookById(bookId)
             val title = book?.title ?: "经典"
-            repository.sendSocraticMessage(bookId, title, contextText, userMsg)
+            sendSocraticMessageUseCase(bookId, title, contextText, userMsg)
             _isAiLoading.value = false
         }
     }
 
-    // --- Notes and OCR card ---
     fun startSimulatedOcrScan(passageExcerpt: String) {
         _isOcrScanning.value = true
         _scannedOcrText.value = null
         viewModelScope.launch {
-            kotlinx.coroutines.delay(1800) // Simulated digital sci-fi scanning beam time
+            kotlinx.coroutines.delay(1800)
             _scannedOcrText.value = passageExcerpt
             _isOcrScanning.value = false
         }
@@ -204,26 +232,24 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
         _isAiLoading.value = true
         viewModelScope.launch {
-            repository.saveNoteWithAiInsight(bookId, originalText, userInsight)
+            saveNoteUseCase(bookId, originalText, userInsight)
             _isAiLoading.value = false
         }
     }
 
     fun deleteNote(note: Note) {
         viewModelScope.launch {
-            repository.deleteNote(note)
+            noteRepository.deleteNote(note)
         }
     }
 
-    // --- Report generation ---
     fun generateReport() {
         val bookId = _currentBookId.value ?: return
         _isAiLoading.value = true
         viewModelScope.launch {
-            val book = repository.getBookById(bookId)
+            val book = bookRepository.getBookById(bookId)
             val title = book?.title ?: "经典"
-            val report = repository.generateBlindBoxReport(bookId, title)
-            _activeReport.value = report
+            _activeReport.value = generateReportUseCase(bookId, title)
             _isAiLoading.value = false
         }
     }
