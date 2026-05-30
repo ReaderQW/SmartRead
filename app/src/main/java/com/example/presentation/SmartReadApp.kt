@@ -10,6 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.presentation.dashboard.DashboardScreen
+import com.example.presentation.reader.ReaderScreen
+import com.example.presentation.viewmodel.SmartReadViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
