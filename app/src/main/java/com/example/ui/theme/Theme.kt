@@ -36,13 +36,21 @@ private val DarkColorScheme =
     onPrimaryContainer = Color(0xFFEADDFF),
     secondary = Color(0xFFCCC2DC),
     onSecondary = Color(0xFF332D41),
+    secondaryContainer = Color(0xFF4A4458),
+    onSecondaryContainer = Color(0xFFE8DEF8),
+    tertiary = Color(0xFFEFB8C8),
+    onTertiary = Color(0xFF492532),
     background = Color(0xFF141218),
     onBackground = Color(0xFFE6E1E5),
-    surface = Color(0xFF141218),
+    surface = Color(0xFF1E1B25),
     onSurface = Color(0xFFE6E1E5),
     surfaceVariant = Color(0xFF49454F),
     onSurfaceVariant = Color(0xFFCAC4D0),
-    outline = Color(0xFF938F99)
+    outline = Color(0xFF938F99),
+    outlineVariant = Color(0xFF49454F),
+    inverseSurface = Color(0xFFE6E1E5),
+    inverseOnSurface = Color(0xFF141218),
+    surfaceTint = Color(0xFFD0BCFF)
   )
 
 @Composable
