@@ -40,11 +40,18 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.presentation.viewmodel.SmartReadViewModel
 
+/**
+ * 仪表盘主页入口。包含顶部搜索栏、底部 Tab 导航和内容区域。
+ * 根据 [activeTab] 切换书架 / 笔记 / 知识图谱三个视图。
+ *
+ * @param viewModel 数据状态持有者，提供图书、笔记、知识图谱数据
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(viewModel: SmartReadViewModel) {
@@ -58,170 +65,16 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
 
     Scaffold(
         topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    RoundedCornerShape(12.dp)
-                                )
-                                .padding(4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Book,
-                                contentDescription = "Logo icon",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(
-                            text = "SmartRead",
-                            style = TextStyle(
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontSize = 23.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp,
-                                fontFamily = FontFamily.Serif
-                            )
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                MaterialTheme.colorScheme.primaryContainer,
-                                RoundedCornerShape(16.dp)
-                            )
-                            .border(
-                                1.dp,
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                RoundedCornerShape(16.dp)
-                            )
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "Insight Mode",
-                            style = TextStyle(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Search field
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
-                        Text(
-                            "追溯思想基因、搜读书本、卡片笔记...",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("dashboard_search"),
-                    shape = RoundedCornerShape(25.dp)
-                )
-            }
+            DashboardTopBar(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it }
+            )
         },
         bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 8.dp
-            ) {
-                NavigationBarItem(
-                    selected = activeTab == 0,
-                    onClick = { activeTab = 0 },
-                    icon = {
-                        Icon(
-                            Icons.Default.Book,
-                            contentDescription = "BookShelf",
-                            tint = if (activeTab == 0) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    label = {
-                        Text(
-                            "智阅书舍",
-                            color = if (activeTab == 0) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 1,
-                    onClick = { activeTab = 1 },
-                    icon = {
-                        Icon(
-                            Icons.Default.Notes,
-                            contentDescription = "Clippings",
-                            tint = if (activeTab == 1) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    label = {
-                        Text(
-                            "思存档案",
-                            color = if (activeTab == 1) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
-                NavigationBarItem(
-                    selected = activeTab == 2,
-                    onClick = { activeTab = 2 },
-                    icon = {
-                        Icon(
-                            Icons.Default.Hub,
-                            contentDescription = "Mind Map",
-                            tint = if (activeTab == 2) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    label = {
-                        Text(
-                            "思想基因图",
-                            color = if (activeTab == 2) MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                )
-            }
+            DashboardBottomBar(
+                activeTab = activeTab,
+                onTabSelected = { activeTab = it }
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -233,7 +86,8 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
             when (activeTab) {
                 0 -> BookShelfView(
                     books = books.filter {
-                        it.title.contains(searchQuery, true) || it.author.contains(searchQuery, true)
+                        it.title.contains(searchQuery, true) ||
+                            it.author.contains(searchQuery, true)
                     },
                     onBookClick = { viewModel.selectBook(it.id) }
                 )
@@ -251,5 +105,228 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                 )
             }
         }
+    }
+}
+
+/**
+ * 仪表盘顶部栏。包含品牌 Logo 行和搜索输入框。
+ *
+ * @param searchQuery 当前搜索关键字
+ * @param onSearchQueryChange 搜索关键字变更回调
+ */
+@Composable
+private fun DashboardTopBar(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        DashboardLogoRow()
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            placeholder = {
+                Text(
+                    "追溯思想基因、搜读书本、卡片笔记...",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .testTag("dashboard_search"),
+            shape = RoundedCornerShape(25.dp)
+        )
+    }
+}
+
+/**
+ * 品牌标识行。左侧为 SmartRead 图标 + 标题，右侧为 Insight Mode 徽章。
+ */
+@Composable
+private fun DashboardLogoRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .padding(4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Book,
+                    contentDescription = "Logo icon",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = "SmartRead",
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    fontFamily = FontFamily.Serif
+                )
+            )
+        }
+        Box(
+            modifier = Modifier
+                .background(
+                    MaterialTheme.colorScheme.primaryContainer,
+                    RoundedCornerShape(16.dp)
+                )
+                .border(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                    RoundedCornerShape(16.dp)
+                )
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = "Insight Mode",
+                style = TextStyle(
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        }
+    }
+}
+
+/**
+ * 底部导航栏。包含"智阅书舍"、"思存档案"、"思想基因图"三个 Tab。
+ *
+ * @param activeTab 当前选中的 Tab 索引（0 = 书架，1 = 笔记，2 = 知识图谱）
+ * @param onTabSelected Tab 选中时的回调，返回选中索引
+ */
+@Composable
+private fun DashboardBottomBar(
+    activeTab: Int,
+    onTabSelected: (Int) -> Unit
+) {
+    NavigationBar(
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        tonalElevation = 8.dp
+    ) {
+        NavigationBarItem(
+            selected = activeTab == 0,
+            onClick = { onTabSelected(0) },
+            icon = {
+                Icon(
+                    Icons.Default.Book,
+                    contentDescription = "BookShelf",
+                    tint = if (activeTab == 0) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            label = {
+                Text(
+                    "智阅书舍",
+                    color = if (activeTab == 0) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        )
+        NavigationBarItem(
+            selected = activeTab == 1,
+            onClick = { onTabSelected(1) },
+            icon = {
+                Icon(
+                    Icons.Default.Notes,
+                    contentDescription = "Clippings",
+                    tint = if (activeTab == 1) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            label = {
+                Text(
+                    "思存档案",
+                    color = if (activeTab == 1) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        )
+        NavigationBarItem(
+            selected = activeTab == 2,
+            onClick = { onTabSelected(2) },
+            icon = {
+                Icon(
+                    Icons.Default.Hub,
+                    contentDescription = "Mind Map",
+                    tint = if (activeTab == 2) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            label = {
+                Text(
+                    "思想基因图",
+                    color = if (activeTab == 2) MaterialTheme.colorScheme.onPrimaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        )
+    }
+}
+
+/**
+ * 仪表盘顶部栏预览。展示搜索框含中文占位符的效果。
+ */
+@Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
+@Composable
+private fun DashboardTopBarPreview() {
+    MaterialTheme {
+        DashboardTopBar(
+            searchQuery = "",
+            onSearchQueryChange = {}
+        )
+    }
+}
+
+/**
+ * 仪表盘底部导航栏预览。展示"智阅书舍" Tab 选中状态。
+ */
+@Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
+@Composable
+private fun DashboardBottomBarPreview() {
+    MaterialTheme {
+        DashboardBottomBar(
+            activeTab = 0,
+            onTabSelected = {}
+        )
     }
 }
