@@ -1,5 +1,5 @@
 package com.example.presentation
-// 阅读思维盲盒报告弹窗
+// 阅读思维盲盒报告弹窗 - 仪式感升级版
 
 import android.content.Intent
 import androidx.compose.foundation.*
@@ -11,7 +11,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -42,7 +43,6 @@ fun ReadingReportDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    // Export and Share long receipt
                     val shareStr = """
                         【SmartRead 学术思想基因鉴定】
                         原著：《${report.bookTitle}》
@@ -66,83 +66,87 @@ fun ReadingReportDialog(
                     }
                     context.startActivity(Intent.createChooser(intent, "导出心智盲盒档案"))
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = primaryColor)
+                colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.AutoAwesome, contentDescription = "Share", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("导出并分享这枚心智盲盒", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("分享这枚思想果实", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
         },
         dismissButton = {
             TextButton(onClick = { onDismiss() }) {
-                Text("返回书海", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("继续探索", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Star, contentDescription = "report icon", tint = primaryColor)
+                Icon(Icons.Default.CardGiftcard, contentDescription = "report icon", tint = primaryColor)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("SmartRead 阅读思维盲盒", color = MaterialTheme.colorScheme.onSurface, fontSize = 17.sp, fontFamily = FontFamily.Serif)
+                Text("思想基因 · 盲盒鉴定", color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
             }
         },
         text = {
+            val bgBrush = Brush.linearGradient(
+                colors = listOf(
+                    MaterialTheme.colorScheme.surface,
+                    Color(0xFFFFF9C4).copy(alpha = 0.2f), // 温暖的治愈黄
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.05f)
+                )
+            )
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(bgBrush)
+                    .padding(4.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("基于您在本期原著划线、笔记撰写、和与有批判性的苏格拉底式对话汇总分析，为您定制心智思想雷达：", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text(
+                    "通过深度阅读与AI共鸣，您的思想维度在此刻具象化呈现：", 
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, 
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Custom Canvas Dynamic 5-axis Radar Chart!
+                // --- RADAR CHART SECTION ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(190.dp),
+                        .height(200.dp)
+                        .background(Color.White.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .border(1.dp, primaryColor.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val cx = size.width / 2f
                         val cy = size.height / 2f
-                        val maxR = 60.dp.toPx()
+                        val maxR = 65.dp.toPx()
 
-                        // Calculated Angles: 5 axis pentagon
                         val angles = floatArrayOf(0f, 72f, 144f, 216f, 288f)
                         val angleRad = angles.map { it * (Math.PI / 180f).toFloat() }
 
-                        // Outer concentric wireframes
-                        for (ring in 1..4) {
-                            val curR = maxR * (ring / 4f)
+                        // Background mesh
+                        for (ring in 1..5) {
+                            val curR = maxR * (ring / 5f)
                             val ringPath = Path().apply {
-                                val sX = cx + curR * cos(angleRad[0])
-                                val sY = cy + curR * sin(angleRad[0])
-                                moveTo(sX, sY)
-                                for (i in 1..4) {
-                                    val x = cx + curR * cos(angleRad[i])
-                                    val y = cy + curR * sin(angleRad[i])
-                                    lineTo(x, y)
+                                moveTo(cx + curR * cos(angleRad[0]), cy + curR * sin(angleRad[0]))
+                                for (i in 1 until angleRad.size) {
+                                    lineTo(cx + curR * cos(angleRad[i]), cy + curR * sin(angleRad[i]))
                                 }
                                 close()
                             }
                             drawPath(
                                 path = ringPath,
-                                color = primaryColor.copy(alpha = 0.1f),
+                                color = primaryColor.copy(alpha = 0.08f),
                                 style = Stroke(width = 1.dp.toPx())
                             )
                         }
 
-                        // Coordinates axis lines
-                        angleRad.forEach { rad ->
-                            drawLine(
-                                color = primaryColor.copy(alpha = 0.15f),
-                                start = Offset(cx, cy),
-                                end = Offset(cx + maxR * cos(rad), cy + maxR * sin(rad)),
-                                strokeWidth = 1.dp.toPx()
-                            )
-                        }
-
-                        // Plotting user indices path
+                        // Data polygon
                         val values = floatArrayOf(
                             report.logic.toFloat(),
                             report.empathy.toFloat(),
@@ -150,87 +154,93 @@ fun ReadingReportDialog(
                             report.width.toFloat(),
                             report.innovation.toFloat()
                         )
-
                         val scorePath = Path().apply {
                             val r0 = maxR * (values[0] / 100f)
                             moveTo(cx + r0 * cos(angleRad[0]), cy + r0 * sin(angleRad[0]))
-                            for (i in 1..4) {
+                            for (i in 1 until values.size) {
                                 val ri = maxR * (values[i] / 100f)
                                 lineTo(cx + ri * cos(angleRad[i]), cy + ri * sin(angleRad[i]))
                             }
                             close()
                         }
 
-                        // Color fill score path
-                        drawPath(
-                            path = scorePath,
-                            color = Color(0x336750A4)
-                        )
-                        drawPath(
-                            path = scorePath,
-                            color = primaryColor,
-                            style = Stroke(width = 2.dp.toPx())
-                        )
+                        drawPath(path = scorePath, color = primaryColor.copy(alpha = 0.25f))
+                        drawPath(path = scorePath, color = primaryColor, style = Stroke(width = 2.dp.toPx()))
                     }
 
-                    // Labels on axis
-                    Text("逻辑度(${report.logic})", color = MaterialTheme.colorScheme.onSurface, fontSize = 9.sp, modifier = Modifier.align(Alignment.CenterEnd).offset(x = (-10).dp))
-                    Text("创见力(${report.innovation})", color = MaterialTheme.colorScheme.onSurface, fontSize = 9.sp, modifier = Modifier.align(Alignment.BottomCenter).offset(y = (-5).dp))
-                    Text("广博度(${report.width})", color = MaterialTheme.colorScheme.onSurface, fontSize = 9.sp, modifier = Modifier.align(Alignment.BottomStart).offset(x = 10.dp))
-                    Text("同理心(${report.empathy})", color = MaterialTheme.colorScheme.onSurface, fontSize = 9.sp, modifier = Modifier.align(Alignment.TopCenter).offset(y = 5.dp))
-                    Text("批判度(${report.critical})", color = MaterialTheme.colorScheme.onSurface, fontSize = 9.sp, modifier = Modifier.align(Alignment.TopStart).offset(x = 10.dp))
+                    // Floating Labels
+                    LabelText("逻辑", Modifier.align(Alignment.CenterEnd).offset(x = (-10).dp))
+                    LabelText("创见", Modifier.align(Alignment.BottomCenter).offset(y = (-8).dp))
+                    LabelText("广博", Modifier.align(Alignment.BottomStart).offset(x = 15.dp, y = (-15).dp))
+                    LabelText("共鸣", Modifier.align(Alignment.TopCenter).offset(y = 8.dp))
+                    LabelText("批判", Modifier.align(Alignment.TopStart).offset(x = 15.dp, y = 15.dp))
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                // Cognitive growth descriptions
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                // --- COGNITIVE INCREMENT ---
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Column {
-                        Row {
-                            Icon(Icons.Default.Star, contentDescription = "grain", tint = primaryColor, modifier = Modifier.size(14.dp))
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.TipsAndUpdates, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("核心认知增量分析 Cognitive Growth：", color = primaryColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("核心认知增量", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                         }
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = report.cognitiveIncrement,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            style = TextStyle(lineHeight = 18.sp)
+                            fontSize = 13.sp,
+                            style = TextStyle(lineHeight = 20.sp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // Personalized philosophic quote matching
+                // --- MOTTO QUOTE ---
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, primaryColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                        .background(primaryColor.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                        .border(1.dp, primaryColor.copy(alpha = 0.2f), RoundedCornerShape(12.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("【书友刻印 · 思想灯塔古训】", color = Color(0xFFBF360C), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Icon(Icons.Default.FormatQuote, contentDescription = null, tint = primaryColor.copy(alpha = 0.3f), modifier = Modifier.size(24.dp))
                         Text(
-                            text = "“${report.motto}”",
+                            text = report.motto,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 13.sp,
+                            fontSize = 14.sp,
                             fontStyle = FontStyle.Italic,
                             textAlign = TextAlign.Center,
-                            style = TextStyle(lineHeight = 19.sp)
+                            fontWeight = FontWeight.Medium,
+                            style = TextStyle(lineHeight = 22.sp)
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("—— 思想刻印", color = primaryColor.copy(alpha = 0.6f), fontSize = 10.sp)
                     }
                 }
             }
         },
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(28.dp)
+    )
+}
+
+@Composable
+private fun LabelText(text: String, modifier: Modifier) {
+    Text(
+        text = text,
+        color = MaterialTheme.colorScheme.primary,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = modifier
+            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 4.dp, vertical = 2.dp)
     )
 }

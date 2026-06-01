@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.presentation.ReadingReportDialog
 import com.example.presentation.SocraticFloatingPanel
 import com.example.presentation.viewmodel.SmartReadViewModel
+import com.example.ui.components.GiftBoxOpeningAnimation
 import com.example.ui.components.LoadingOverlay
 import com.example.utils.BookDummyData
 import kotlinx.coroutines.launch
@@ -89,6 +90,14 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
     var isCommentDialogShow by remember { mutableStateOf(false) }
     var commentInputText by remember { mutableStateOf("") }
     var chosenHighlightIdForComment by remember { mutableIntStateOf(0) }
+    var showGiftBox by remember { mutableStateOf(false) }
+
+    // 当有新报告生成时，先开启礼盒动画仪式
+    LaunchedEffect(activeReport) {
+        if (activeReport != null) {
+            showGiftBox = true
+        }
+    }
 
     // Update reader progress whenever page switches
     LaunchedEffect(pageIndex) {
@@ -309,12 +318,21 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
                 viewModel = viewModel
             )
 
-            // Reading report dialog
-            activeReport?.let { report ->
-                ReadingReportDialog(
-                    report = report,
-                    onDismiss = { viewModel.closeReport() }
+            // 1. 礼盒开启仪式感动效
+            if (showGiftBox) {
+                GiftBoxOpeningAnimation(
+                    onFinished = { showGiftBox = false }
                 )
+            }
+
+            // 2. Reading report dialog (仪式结束后显示)
+            if (!showGiftBox) {
+                activeReport?.let { report ->
+                    ReadingReportDialog(
+                        report = report,
+                        onDismiss = { viewModel.closeReport() }
+                    )
+                }
             }
 
             // AI loading overlay
