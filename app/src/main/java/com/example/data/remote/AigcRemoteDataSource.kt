@@ -82,6 +82,55 @@ class AigcRemoteDataSource(
 
         return runCatching { JSONObject(jsonString) }.getOrNull()
     }
+
+    /**
+     * 智能搜索/推荐书籍
+     * 返回格式：JSON 数组 [{"title": "...", "author": "...", "summary": "...", "category": "..."}]
+     */
+    suspend fun searchBooks(query: String): List<JSONObject> {
+        val raw = generate(
+            prompt = Prompts.searchBooksPrompt(query),
+            systemPrompt = Prompts.searchBooksSystemPrompt
+        )
+        
+        return try {
+            val startIndex = raw.indexOf("[")
+            val endIndex = raw.lastIndexOf("]")
+            if (startIndex != -1 && endIndex != -1) {
+                val jsonArray = org.json.JSONArray(raw.substring(startIndex, endIndex + 1))
+                List(jsonArray.length()) { i -> jsonArray.getJSONObject(i) }
+            } else emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    /**
+     * 推理思想间的深层基因关系
+     * 返回格式：JSON 数组 [{"target": "...", "type": "...", "reason": "..."}]
+     */
+    suspend fun inferRelationships(
+        currentNote: String,
+        relatedNotes: List<String>
+    ): List<JSONObject> {
+        if (relatedNotes.isEmpty()) return emptyList()
+        
+        val raw = generate(
+            prompt = Prompts.geneRelationshipPrompt(currentNote, relatedNotes),
+            systemPrompt = Prompts.geneRelationshipSystemPrompt
+        )
+        
+        return try {
+            val startIndex = raw.indexOf("[")
+            val endIndex = raw.lastIndexOf("]")
+            if (startIndex != -1 && endIndex != -1) {
+                val jsonArray = org.json.JSONArray(raw.substring(startIndex, endIndex + 1))
+                List(jsonArray.length()) { i -> jsonArray.getJSONObject(i) }
+            } else emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 }
 
 object Prompts {
@@ -131,7 +180,7 @@ object Prompts {
         阅读高亮（体现关注点）：
         $highlightsText
 
-        阅读笔记（体现思考深度）：
+        阅读笔记（包括AI深透剖析）：
         $notesSummaryText
 
         用户提问（体现怀疑精神）：
@@ -144,8 +193,36 @@ object Prompts {
           "critical": 批判思维评分(50-100),
           "width": 知识广度评分(50-100),
           "innovation": 创新启发评分(50-100),
-          "cognitiveIncrement": "一段话总结本次阅读带来的认知增量，要求有洞察力",
-          "motto": "一句激励读者的阅读金句"
+          "cognitiveIncrement": "结合用户的划线和笔记，总结本次阅读带来的认知增量",
+          "motto": "一句深度契合读者本次思考风格的阅读金句"
         }
+    """.trimIndent()
+
+    const val geneRelationshipSystemPrompt = 
+        "你是一个思想基因分析专家。你的任务是发现不同思想/观点之间的深层逻辑联系，并以纯 JSON 数组形式返回关系。关系类型包括：支撑, 矛盾, 类比, 补充, 演化。"
+
+    fun geneRelationshipPrompt(current: String, others: List<String>) = """
+        新思想：
+        "$current"
+
+        已有思想库：
+        ${others.joinToString("\n") { "- $it" }}
+
+        请找出“新思想”与“已有思想库”中哪些观点存在逻辑关联，并返回 JSON 数组（不要 Markdown）：
+        [
+          { "target": "已有思想的内容简述", "type": "支撑/矛盾/类比/补充/演化", "reason": "一句话解释原因" }
+        ]
+    """.trimIndent()
+
+    const val searchBooksSystemPrompt =
+        "你是一个博学的图书检索助手。请根据用户关键词搜索或推荐相关书籍，并以纯 JSON 数组形式返回结果，不要包含 Markdown 格式。"
+
+    fun searchBooksPrompt(query: String) = """
+        关键词：$query
+        请搜索或推荐 5 本相关的经典书籍。
+        返回格式：
+        [
+          { "title": "书名", "author": "作者", "summary": "一句话简介", "category": "分类" }
+        ]
     """.trimIndent()
 }
