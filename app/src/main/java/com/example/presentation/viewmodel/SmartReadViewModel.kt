@@ -6,12 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.example.data.local.SmartReadDatabase
 import com.example.data.mapper.toEntity
 import com.example.data.remote.AigcRemoteDataSource
+import com.example.data.remote.VivoClient
 import com.example.data.repository.BookRepositoryImpl
 import com.example.data.repository.ChatRepositoryImpl
 import com.example.data.repository.KnowledgeRepositoryImpl
 import com.example.data.repository.NoteRepositoryImpl
 import com.example.data.repository.ReaderRepositoryImpl
 import com.example.data.repository.ReportRepositoryImpl
+import com.example.data.repository.VivoImageRepositoryImpl
 import com.example.data.vector.VectorStore
 import com.example.domain.model.Book
 import com.example.domain.model.ChatMessage
@@ -41,7 +43,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val aigcRemoteDataSource = AigcRemoteDataSource()
     private val vectorStore = VectorStore(db.embeddingDao())
     private val knowledgeRepository = KnowledgeRepositoryImpl(db.knowledgeDao(), vectorStore)
-    private val bookRepository = BookRepositoryImpl(db.bookDao(), db.knowledgeDao())
+    private val bookRepository = BookRepositoryImpl(db.bookDao(), db.knowledgeDao(), aigcRemoteDataSource)
     private val readerRepository = ReaderRepositoryImpl(db.highlightDao(), knowledgeRepository)
     private val noteRepository = NoteRepositoryImpl(db.noteDao(), aigcRemoteDataSource, knowledgeRepository)
     private val chatRepository = ChatRepositoryImpl(db.chatDao(), aigcRemoteDataSource, knowledgeRepository)
@@ -52,6 +54,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         db.chatDao(),
         aigcRemoteDataSource
     )
+    private val vivoImageRepository = VivoImageRepositoryImpl(VivoClient().api)
 
     private val saveHighlightUseCase = SaveHighlightUseCase(readerRepository)
     private val saveNoteUseCase = SaveNoteUseCase(noteRepository)
@@ -82,6 +85,9 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _activeReport = MutableStateFlow<ReadingReport?>(null)
     val activeReport: StateFlow<ReadingReport?> = _activeReport.asStateFlow()
+
+    private val _artImageState = MutableStateFlow<ArtImageState>(ArtImageState.Idle)
+    val artImageState: StateFlow<ArtImageState> = _artImageState.asStateFlow()
 
     val allBooks: StateFlow<List<Book>> = bookRepository.allBooks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -191,7 +197,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
                 bookId = 3,
                 pageIndex = 2,
                 originalText = "几何精神依赖严谨明晰的逻辑……敏感精神的规则却隐藏在凡尘生活的每一处细节中",
-                userNote = "这两种精神的划分让我想到自己在学习和工作中的两种状态：有时需要严密的逻辑推理（写代码时），有时需要直觉和敏感（审美好坏时）。真正的智慧是知道什么时候用哪种能力。",
+                userNote = "这两种精神的划分让我想到自己在学习和工作中的两种状态：有时需要严密的逻辑推理（写代码时），有时需要直觉 and 敏感（审美好坏时）。真正的智慧是知道什么时候用哪种能力。",
                 tags = "帕斯卡尔,理性与直觉,认知方式",
                 aiSummary = "帕斯卡尔对'几何精神'与'敏感精神'的区分，预示了两千年后心理学中的'双系统理论'（System 1 / System 2）。真正的智慧在于两种认知模式的灵活切换与互补。",
                 timestamp = now - 25200000L
@@ -234,6 +240,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         _isFloatingAssistantOpen.value = false
         _scannedOcrText.value = null
         _activeReport.value = null
+        _artImageState.value = ArtImageState.Idle
     }
 
     fun setPageIndex(page: Int) {
@@ -365,5 +372,25 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun closeReport() {
         _activeReport.value = null
+    }
+
+    fun generateArtImage() {
+        val report = _activeReport.value ?: return
+        val bookId = _currentBookId.value ?: return
+
+        _artImageState.value = ArtImageState.Loading
+        viewModelScope.launch {
+            val prompt = aigcRemoteDataSource.generateArtPrompt(
+                report.bookTitle,
+                report.cognitiveIncrement,
+                report.motto
+            )
+            val result = vivoImageRepository.generateArtImage(prompt, "水墨意境")
+            result.onSuccess { url ->
+                _artImageState.value = ArtImageState.Success(url)
+            }.onFailure { e ->
+                _artImageState.value = ArtImageState.Error(e.message ?: "生成失败")
+            }
+        }
     }
 }

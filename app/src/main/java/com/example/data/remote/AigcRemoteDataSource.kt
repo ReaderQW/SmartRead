@@ -58,6 +58,31 @@ class AigcRemoteDataSource(
             .replace(".", "")
             .trim()
 
+    suspend fun inferRelationships(currentNote: String, recentNotes: List<String>): List<JSONObject> {
+        val raw = generate(
+            prompt = Prompts.inferRelationshipsPrompt(currentNote, recentNotes),
+            systemPrompt = Prompts.inferRelationshipsSystemPrompt
+        )
+        val jsonString = try {
+            val startIndex = raw.indexOf("[")
+            val endIndex = raw.lastIndexOf("]")
+            if (startIndex != -1 && endIndex != -1 && endIndex >= startIndex) {
+                raw.substring(startIndex, endIndex + 1)
+            } else {
+                raw.trim()
+            }
+        } catch (e: Exception) {
+            raw.trim()
+        }
+
+        return try {
+            val array = JSONArray(jsonString)
+            List(array.length()) { i -> array.getJSONObject(i) }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
     suspend fun blindBoxReportJson(
         bookTitle: String,
         notesSummaryText: String,
@@ -108,6 +133,15 @@ class AigcRemoteDataSource(
             emptyList()
         }
     }
+
+    /**
+     * 根据阅读报告内容生成绘画 Prompt
+     */
+    suspend fun generateArtPrompt(bookTitle: String, cognitiveIncrement: String, motto: String): String =
+        generate(
+            prompt = Prompts.artPromptUserPrompt(bookTitle, cognitiveIncrement, motto),
+            systemPrompt = Prompts.artPromptSystemPrompt
+        )
 }
 
 object Prompts {
@@ -115,15 +149,15 @@ object Prompts {
         "你是 SmartRead 的智能伴读专家。你不仅精通苏格拉底式启发教学，还能提供深刻的知识洞察。你的角色是读者的“思想陪跑者”。当读者感到困惑时，你要提供多维度的引导和参考答案；当读者表达观点时，你要通过挑战性提问深化其思考。回复要博学、温和且具有穿透力。"
 
     fun socraticUserPrompt(bookTitle: String, passage: String, userText: String, historyPrompt: String) = """
-        当前书籍：《$bookTitle》
+        当前书籍：《${"$"}bookTitle》
         当前选中片段：
-        "$passage"
+        "${"$"}passage"
 
         读者的思考/问题：
-        "$userText"
+        "${"$"}userText"
 
         最近对话历史：
-        $historyPrompt
+        ${"$"}historyPrompt
 
         请按照以下逻辑给予回应：
         1. 简要肯定或梳理读者的观点。
@@ -136,10 +170,10 @@ object Prompts {
 
     fun noteInsightPrompt(originalText: String, userNote: String) = """
         原文摘录：
-        "$originalText"
+        "${"$"}originalText"
 
         读者的感悟：
-        "$userNote"
+        "${"$"}userNote"
 
         请基于以上内容，生成一段 100 字以内的'AI智慧深透剖析'，帮助读者提升认知维度。
     """.trimIndent()
@@ -147,21 +181,41 @@ object Prompts {
     const val noteTagsSystemPrompt = "你是一个极简标签分类器，只返回标签。"
 
     fun noteTagsPrompt(originalText: String, userNote: String) =
-        "根据以下原文和笔记生成 2 个简短标签，用英文逗号分隔，只返回标签：\n$originalText\n$userNote"
+        "根据以下原文和笔记生成 2 个简短标签，用英文逗号分隔，只返回标签：\n${"$"}originalText\n${"$"}userNote"
+
+    const val inferRelationshipsSystemPrompt =
+        "你是一个知识图谱专家。你的任务是分析当前笔记与之前笔记之间的潜在联系，并以 JSON 数组格式返回这些联系。每个联系应包含 'target' (目标笔记的简短描述) 和 'type' (关系类型，如 '补充'、'矛盾'、'因果'、'延伸'等)。"
+
+    fun inferRelationshipsPrompt(currentNote: String, recentNotes: List<String>) = """
+        当前笔记：
+        "${"$"}currentNote"
+
+        最近的其他笔记：
+        ${"$"}{recentNotes.joinToString("\n") { "- ${"$"}it" }}
+
+        请分析当前笔记与上述哪些笔记有显著关联，并返回 JSON 数组（最多 3 个关联）：
+        [
+          {
+            "target": "目标笔记的核心内容摘要",
+            "type": "关系类型"
+          }
+        ]
+        如果没有任何显著关联，请返回空数组 []。请确保只返回 JSON。
+    """.trimIndent()
 
     const val reportSystemPrompt =
         "你是一个高级阅读报告分析师。你的任务是根据读者的阅读数据（划线、笔记、对话）生成一份多维度的'阅读盲盒报告'。请务必返回可被 JSONObject 解析的纯 JSON 格式内容，不要包含任何 Markdown 标记。"
 
     fun reportPrompt(bookTitle: String, highlightsText: String, notesSummaryText: String, chatsText: String) = """
-        书籍：《$bookTitle》
+        书籍：《${"$"}bookTitle》
         阅读高亮（体现关注点）：
-        $highlightsText
+        ${"$"}highlightsText
 
         阅读笔记（体现思考深度）：
-        $notesSummaryText
+        ${"$"}notesSummaryText
 
         用户提问（体现怀疑精神）：
-        $chatsText
+        ${"$"}chatsText
 
         请综合分析以上数据，评估读者的阅读表现并返回 JSON：
         {
@@ -179,7 +233,7 @@ object Prompts {
         "你是一个博学且专业的图书推荐助手。请根据用户提供的关键词或描述，推荐 3-5 本相关的经典书籍或高价值读物。请务必返回可被 JSONArray 解析的纯 JSON 格式内容，不要包含任何 Markdown 标记或解释性文字。"
 
     fun searchBooksPrompt(query: String) = """
-        搜索关键词或描述："$query"
+        搜索关键词或描述："${"$"}query"
         请按以下格式返回 JSON 数组：
         [
           {
@@ -189,5 +243,21 @@ object Prompts {
             "category": "分类标签"
           }
         ]
+    """.trimIndent()
+
+    const val artPromptSystemPrompt =
+        "你是一个专业的艺术提示词专家。你的任务是将读者的阅读总结转化为一段高质量的、充满意境的绘画 Prompt，用于 AI 生成水墨风格的艺术长图。提示词应该是具象的、富有诗意的，且能体现书中的意境和读者的感悟。"
+
+    fun artPromptUserPrompt(bookTitle: String, cognitiveIncrement: String, motto: String) = """
+        书籍名称：《${"$"}bookTitle》
+        认知增量：${"$"}cognitiveIncrement
+        阅读金句：${"$"}motto
+
+        请基于以上信息，生成一段 200 字以内的绘画 Prompt。
+        要求：
+        1. 强调中国传统“水墨”风格。
+        2. 结合书籍的意象和阅读感悟，创造一个具象的视觉场景（如：高山流水、古人夜读、破茧成蝶等）。
+        3. 描述场景的细节、色彩（以黑白灰为主，辅以少量点缀）、构图和情感氛围。
+        4. 直接返回 Prompt 文本，不要有任何多余的解释。
     """.trimIndent()
 }
