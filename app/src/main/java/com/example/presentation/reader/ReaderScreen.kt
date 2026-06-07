@@ -330,6 +330,7 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
                 activeReport?.let { report ->
                     ReadingReportDialog(
                         report = report,
+                        viewModel = viewModel,
                         onDismiss = { viewModel.closeReport() }
                     )
                 }

@@ -40,6 +40,15 @@ interface ReportRepository {
     suspend fun generateBlindBoxReport(bookId: Int, bookTitle: String): ReadingReport
 }
 
+interface VivoImageRepository {
+    /**
+     * 调用 vivo AI 生成艺术长图
+     * @param prompt 绘画描述词
+     * @param style 风格
+     */
+    suspend fun generateArtImage(prompt: String, style: String): kotlin.Result<String>
+}
+
 interface KnowledgeRepository {
     val allNodes: Flow<List<KnowledgeNode>>
     val allEdges: Flow<List<KnowledgeEdge>>

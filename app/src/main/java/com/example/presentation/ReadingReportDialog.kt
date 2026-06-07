@@ -2,6 +2,8 @@ package com.example.presentation
 // 阅读思维盲盒报告弹窗 - 仪式感升级版
 
 import android.content.Intent
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,15 +18,19 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.domain.model.ReadingReport
+import com.example.presentation.viewmodel.ArtImageState
+import com.example.presentation.viewmodel.SmartReadViewModel
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -33,10 +39,12 @@ import kotlin.math.sin
 @Composable
 fun ReadingReportDialog(
     report: ReadingReport,
+    viewModel: SmartReadViewModel,
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
     val primaryColor = MaterialTheme.colorScheme.primary
+    val artImageState by viewModel.artImageState.collectAsStateWithLifecycle()
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -69,9 +77,9 @@ fun ReadingReportDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = primaryColor),
                 shape = RoundedCornerShape(20.dp)
             ) {
-                Icon(Icons.Default.AutoAwesome, contentDescription = "Share", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("分享这枚思想果实", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("分享文本报告", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
         },
         dismissButton = {
@@ -101,7 +109,8 @@ fun ReadingReportDialog(
                     .clip(RoundedCornerShape(12.dp))
                     .background(bgBrush)
                     .padding(4.dp)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
                     "通过深度阅读与AI共鸣，您的思想维度在此刻具象化呈现：", 
@@ -169,11 +178,21 @@ fun ReadingReportDialog(
                     }
 
                     // Floating Labels
-                    LabelText("逻辑", Modifier.align(Alignment.CenterEnd).offset(x = (-10).dp))
-                    LabelText("创见", Modifier.align(Alignment.BottomCenter).offset(y = (-8).dp))
-                    LabelText("广博", Modifier.align(Alignment.BottomStart).offset(x = 15.dp, y = (-15).dp))
-                    LabelText("共鸣", Modifier.align(Alignment.TopCenter).offset(y = 8.dp))
-                    LabelText("批判", Modifier.align(Alignment.TopStart).offset(x = 15.dp, y = 15.dp))
+                    LabelText("逻辑", Modifier
+                        .align(Alignment.CenterEnd)
+                        .offset(x = (-10).dp))
+                    LabelText("创见", Modifier
+                        .align(Alignment.BottomCenter)
+                        .offset(y = (-8).dp))
+                    LabelText("广博", Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = 15.dp, y = (-15).dp))
+                    LabelText("共鸣", Modifier
+                        .align(Alignment.TopCenter)
+                        .offset(y = 8.dp))
+                    LabelText("批判", Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 15.dp, y = 15.dp))
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -225,6 +244,96 @@ fun ReadingReportDialog(
                         Text("—— 思想刻印", color = primaryColor.copy(alpha = 0.6f), fontSize = 10.sp)
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // --- VIVO AI ART IMAGE SECTION ---
+                Divider(color = primaryColor.copy(alpha = 0.1f))
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = primaryColor, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("灵魂共鸣 · 艺术长图", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Text(
+                    "基于阅读脉络，由 vivo AI 妙笔生画生成专属艺术图卷",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                when (val state = artImageState) {
+                    is ArtImageState.Idle -> {
+                        Button(
+                            onClick = { viewModel.generateArtImage() },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
+                        ) {
+                            Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("立即生成艺术盲盒长图", fontSize = 12.sp)
+                        }
+                    }
+                    is ArtImageState.Loading -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("vivo AI 正在构思您的精神图卷...", fontSize = 11.sp, color = primaryColor)
+                        }
+                    }
+                    is ArtImageState.Success -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            AsyncImage(
+                                model = state.imageUrl,
+                                contentDescription = "Generated Art Image",
+                                contentScale = ContentScale.FillWidth,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .border(2.dp, primaryColor.copy(alpha = 0.3f), RoundedCornerShape(16.dp))
+                                    .clickable {
+                                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_TEXT, "这是我在 SmartRead 阅读《${report.bookTitle}》生成的灵魂共鸣长图：${state.imageUrl}")
+                                        }
+                                        context.startActivity(Intent.createChooser(shareIntent, "分享我的艺术长图"))
+                                    }
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("点击图片分享您的艺术盲盒", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            
+                            OutlinedButton(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(state.imageUrl))
+                                    context.startActivity(intent)
+                                },
+                                modifier = Modifier.padding(top = 8.dp),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("下载高清原图", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    is ArtImageState.Error -> {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("生成失败: ${state.message}", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+                            TextButton(onClick = { viewModel.generateArtImage() }) {
+                                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("重新生成", fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
         },
         containerColor = MaterialTheme.colorScheme.surface,
