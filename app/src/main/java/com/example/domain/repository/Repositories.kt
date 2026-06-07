@@ -15,6 +15,8 @@ interface BookRepository {
     suspend fun getBookById(id: Int): Book?
     suspend fun updateBook(book: Book)
     suspend fun seedInitialBooks()
+    suspend fun searchBooks(query: String): List<Book>
+    suspend fun addBook(book: Book): Int
 }
 
 interface ReaderRepository {
