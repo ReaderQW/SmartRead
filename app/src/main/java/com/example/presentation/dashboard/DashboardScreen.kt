@@ -2,6 +2,7 @@ package com.example.presentation.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.presentation.settings.SettingsSidebar
 import com.example.presentation.viewmodel.SmartReadViewModel
 
 /**
@@ -66,15 +68,19 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     val notes by viewModel.allNotes.collectAsStateWithLifecycle()
     val nodes by viewModel.knowledgeNodes.collectAsStateWithLifecycle()
     val edges by viewModel.knowledgeEdges.collectAsStateWithLifecycle()
+    val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()
 
     var activeTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
+    var showSettings by remember { mutableStateOf(false) }
 
-    Scaffold(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
         topBar = {
             DashboardTopBar(
                 searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it }
+                onSearchQueryChange = { searchQuery = it },
+                onLogoClick = { showSettings = true }
             )
         },
         bottomBar = {
@@ -113,6 +119,18 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
             }
         }
     }
+
+        // 设置侧边栏覆盖层（在 Scaffold 之上，覆盖全屏包括顶栏和底栏）
+        SettingsSidebar(
+            isVisible = showSettings,
+            uiConfig = uiConfig,
+            onDismiss = { showSettings = false },
+            onUpdateThemeMode = { viewModel.updateThemeMode(it) },
+            onUpdateUiFont = { viewModel.updateUiFont(it) },
+            onUpdateReadingFont = { viewModel.updateReadingFont(it) },
+            onUpdateColorTheme = { viewModel.updateColorTheme(it) }
+        )
+    }
 }
 
 /**
@@ -124,7 +142,8 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
 @Composable
 private fun DashboardTopBar(
     searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
+    onSearchQueryChange: (String) -> Unit,
+    onLogoClick: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -134,7 +153,7 @@ private fun DashboardTopBar(
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        DashboardLogoRow()
+        DashboardLogoRow(onLogoClick = onLogoClick)
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -191,11 +210,14 @@ private fun DashboardTopBar(
 
 /**
  * 品牌标识行。左侧为 SmartRead 图标 + 标题，右侧为 Insight Mode 徽章。
+ * 点击可打开设置侧边栏。
  */
 @Composable
-private fun DashboardLogoRow() {
+private fun DashboardLogoRow(onLogoClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onLogoClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

@@ -30,10 +30,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -131,7 +129,6 @@ fun KnowledgeGraphView(
         }
     }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
     val bgColor = MaterialTheme.colorScheme.background
     val surfaceColor = MaterialTheme.colorScheme.surface
     val surfaceVariantColor = MaterialTheme.colorScheme.surfaceVariant
@@ -173,7 +170,7 @@ fun KnowledgeGraphView(
             val radiusPx = with(density) { (baseRadiusDp + degree * 1.5f).coerceAtMost(40f).dp.toPx() }
 
             val color = when (node.category) {
-                "Book" -> primaryColor
+                "Book" -> Color(0xFF6750A4)
                 "Concept" -> Color(0xFFFFB300)
                 "Note" -> Color(0xFFE91E63)
                 "Mindset" -> Color(0xFF4CAF50)
@@ -325,7 +322,7 @@ fun KnowledgeGraphView(
                 val edgeAlpha = if (edgeIsDimmed) 0.03f
                     else (0.15f + (weight * 0.05f).coerceAtMost(0.3f))
                 drawLine(
-                    color = onSurfaceColor.copy(alpha = edgeAlpha),
+                    color = Color(0xFF79747E).copy(alpha = edgeAlpha),
                     start = start,
                     end = end,
                     strokeWidth = (1.5f + weight).dp.toPx() * zoom,
