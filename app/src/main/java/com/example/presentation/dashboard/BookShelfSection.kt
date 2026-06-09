@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -155,10 +154,19 @@ private fun BookCover(book: Book) {
             .clip(RoundedCornerShape(6.dp))
             .background(
                 Brush.verticalGradient(
-                    colors = when (book.id) {
-                        1 -> listOf(MaterialTheme.colorScheme.primary, Color(0xFF985EFF))
-                        2 -> listOf(Color(0xFF381E72), MaterialTheme.colorScheme.primary)
-                        else -> listOf(Color(0xFF4F378B), Color(0xFFB09FFF))
+                    colors = when (book.id % 3) {
+                        1 -> listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.tertiary
+                        )
+                        2 -> listOf(
+                            MaterialTheme.colorScheme.secondary,
+                            MaterialTheme.colorScheme.primary
+                        )
+                        else -> listOf(
+                            MaterialTheme.colorScheme.primary,
+                            MaterialTheme.colorScheme.primaryContainer
+                        )
                     }
                 )
             )

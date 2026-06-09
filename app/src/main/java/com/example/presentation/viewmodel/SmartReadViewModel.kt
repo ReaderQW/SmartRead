@@ -26,6 +26,10 @@ import com.example.domain.usecase.GenerateReportUseCase
 import com.example.domain.usecase.SaveHighlightUseCase
 import com.example.domain.usecase.SaveNoteUseCase
 import com.example.domain.usecase.SendSocraticMessageUseCase
+import com.example.ui.theme.ColorTheme
+import com.example.ui.theme.FontOption
+import com.example.ui.theme.ThemeMode
+import com.example.ui.theme.UiConfig
 import com.example.utils.BookDummyData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -87,6 +91,9 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _searchResults = MutableStateFlow<List<Book>>(emptyList())
     val searchResults: StateFlow<List<Book>> = _searchResults.asStateFlow()
 
+    private val _uiConfig = MutableStateFlow(UiConfig())
+    val uiConfig: StateFlow<UiConfig> = _uiConfig.asStateFlow()
+
     val allBooks: StateFlow<List<Book>> = bookRepository.allBooks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -138,6 +145,30 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
             val savedId = if (id == 0) note.id else id
             knowledgeRepository.indexText(note.bookId, "NOTE", savedId.toString(), "${note.originalText}\n${note.userNote}")
         }
+    }
+
+    // ──────────────────────────────────────────────
+    // UI 配置更新方法
+    // ──────────────────────────────────────────────
+
+    fun updateUiConfig(config: UiConfig) {
+        _uiConfig.value = config
+    }
+
+    fun updateThemeMode(mode: ThemeMode) {
+        _uiConfig.value = _uiConfig.value.copy(themeMode = mode)
+    }
+
+    fun updateUiFont(font: FontOption) {
+        _uiConfig.value = _uiConfig.value.copy(uiFont = font)
+    }
+
+    fun updateReadingFont(font: FontOption) {
+        _uiConfig.value = _uiConfig.value.copy(readingFont = font)
+    }
+
+    fun updateColorTheme(colorTheme: ColorTheme) {
+        _uiConfig.value = _uiConfig.value.copy(colorTheme = colorTheme)
     }
 
     fun selectBook(bookId: Int?) {
