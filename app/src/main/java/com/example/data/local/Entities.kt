@@ -112,6 +112,7 @@ data class ReadingReportEntity(
     val innovation: Int,
     val cognitiveIncrement: String,
     val motto: String,
+    val artImageUrl: String? = null,
     val timestamp: Long = System.currentTimeMillis()
 )
 

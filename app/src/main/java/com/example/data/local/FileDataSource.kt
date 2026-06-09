@@ -3,10 +3,14 @@ package com.example.data.local
 import android.content.Context
 import com.example.domain.model.Book
 import com.example.domain.model.ChatMessage
+import com.example.domain.model.DialogueFrequency
 import com.example.domain.model.Highlight
+import com.example.domain.model.HighlightSemantics
+import com.example.domain.model.InteractionMatrix
 import com.example.domain.model.KnowledgeEdge
 import com.example.domain.model.KnowledgeNode
 import com.example.domain.model.Note
+import com.example.domain.model.NoteDepth
 import com.example.domain.model.ReadingReport
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -373,29 +377,100 @@ class FileDataSource(private val context: Context) {
         put("weight", weight.toDouble())
     }
 
+    // ── ReadingReport 升级版 JSON 序列化（含三维交互矩阵 + 丰富内容字段） ──
     private fun JSONObject.toReport() = ReadingReport(
         bookId = optInt("bookId"),
         bookTitle = optString("bookTitle"),
+        bookAuthor = optString("bookAuthor", ""),
+        bookSummary = optString("bookSummary", ""),
         logic = optInt("logic"),
         empathy = optInt("empathy"),
         critical = optInt("critical"),
         width = optInt("width"),
         innovation = optInt("innovation"),
+        interactionMatrix = parseInteractionMatrix(optJSONObject("interactionMatrix")),
         cognitiveIncrement = optString("cognitiveIncrement"),
         motto = optString("motto"),
+        highlightsList = parseStringArray(optJSONArray("highlightsList")),
+        notesList = parseStringArray(optJSONArray("notesList")),
+        chatExcerpts = parseStringArray(optJSONArray("chatExcerpts")),
+        artImageUrl = if (has("artImageUrl")) optString("artImageUrl") else null,
         timestamp = optLong("timestamp", System.currentTimeMillis())
     )
     private fun ReadingReport.toJson() = JSONObject().apply {
         put("bookId", bookId)
         put("bookTitle", bookTitle)
+        put("bookAuthor", bookAuthor)
+        put("bookSummary", bookSummary)
         put("logic", logic)
         put("empathy", empathy)
         put("critical", critical)
         put("width", width)
         put("innovation", innovation)
+        put("interactionMatrix", interactionMatrix.toJson())
         put("cognitiveIncrement", cognitiveIncrement)
         put("motto", motto)
+        put("highlightsList", JSONArray(highlightsList))
+        put("notesList", JSONArray(notesList))
+        put("chatExcerpts", JSONArray(chatExcerpts))
+        artImageUrl?.let { put("artImageUrl", it) }
         put("timestamp", timestamp)
+    }
+
+    private fun InteractionMatrix.toJson() = JSONObject().apply {
+        put("highlightSemantics", highlightSemantics.toJson())
+        put("noteDepth", noteDepth.toJson())
+        put("dialogueFrequency", dialogueFrequency.toJson())
+    }
+    private fun HighlightSemantics.toJson() = JSONObject().apply {
+        put("totalCount", totalCount)
+        put("keyConcepts", JSONArray(keyConcepts))
+        put("emotionalTone", emotionalTone)
+        put("representativeExcerpts", JSONArray(representativeExcerpts))
+    }
+    private fun NoteDepth.toJson() = JSONObject().apply {
+        put("totalCount", totalCount)
+        put("depthScore", depthScore)
+        put("insightThemes", JSONArray(insightThemes))
+        put("representativeNotes", JSONArray(representativeNotes))
+    }
+    private fun DialogueFrequency.toJson() = JSONObject().apply {
+        put("totalCount", totalCount)
+        put("questionTypes", JSONArray(questionTypes))
+        put("engagementLevel", engagementLevel)
+        put("representativeDialogues", JSONArray(representativeDialogues))
+    }
+
+    private fun parseInteractionMatrix(obj: JSONObject?): InteractionMatrix {
+        if (obj == null) return InteractionMatrix(HighlightSemantics(), NoteDepth(), DialogueFrequency())
+        val hs = obj.optJSONObject("highlightSemantics")
+        val nd = obj.optJSONObject("noteDepth")
+        val df = obj.optJSONObject("dialogueFrequency")
+        return InteractionMatrix(
+            highlightSemantics = HighlightSemantics(
+                totalCount = hs?.optInt("totalCount", 0) ?: 0,
+                keyConcepts = parseStringArray(hs?.optJSONArray("keyConcepts")),
+                emotionalTone = hs?.optString("emotionalTone", "") ?: "",
+                representativeExcerpts = parseStringArray(hs?.optJSONArray("representativeExcerpts"))
+            ),
+            noteDepth = NoteDepth(
+                totalCount = nd?.optInt("totalCount", 0) ?: 0,
+                depthScore = nd?.optInt("depthScore", 0) ?: 0,
+                insightThemes = parseStringArray(nd?.optJSONArray("insightThemes")),
+                representativeNotes = parseStringArray(nd?.optJSONArray("representativeNotes"))
+            ),
+            dialogueFrequency = DialogueFrequency(
+                totalCount = df?.optInt("totalCount", 0) ?: 0,
+                questionTypes = parseStringArray(df?.optJSONArray("questionTypes")),
+                engagementLevel = df?.optInt("engagementLevel", 0) ?: 0,
+                representativeDialogues = parseStringArray(df?.optJSONArray("representativeDialogues"))
+            )
+        )
+    }
+
+    private fun parseStringArray(array: JSONArray?): List<String> {
+        if (array == null) return emptyList()
+        return (0 until array.length()).map { array.optString(it, "") }.filter { it.isNotEmpty() }
     }
 
     // JSONObject 工具方法

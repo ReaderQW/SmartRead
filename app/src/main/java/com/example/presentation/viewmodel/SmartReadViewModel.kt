@@ -40,6 +40,9 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * SmartRead 主 ViewModel
+ */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class SmartReadViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -84,7 +87,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _activeReport = MutableStateFlow<ReadingReport?>(null)
     val activeReport: StateFlow<ReadingReport?> = _activeReport.asStateFlow()
 
-    private val vivoImageRepository = VivoImageRepositoryImpl(VivoClient().api)
+    private val vivoImageRepository = VivoImageRepositoryImpl(VivoClient().api, aigcRemoteDataSource)
     private val _artImageState = MutableStateFlow<ArtImageState>(ArtImageState.Idle)
     val artImageState: StateFlow<ArtImageState> = _artImageState.asStateFlow()
 
@@ -178,6 +181,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         _isFloatingAssistantOpen.value = false
         _scannedOcrText.value = null
         _activeReport.value = null
+        _artImageState.value = ArtImageState.Idle
     }
 
     fun setPageIndex(page: Int) {
@@ -297,16 +301,25 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     fun generateReport() {
         val bookId = _currentBookId.value ?: return
         _isAiLoading.value = true
+        _artImageState.value = ArtImageState.Idle
         viewModelScope.launch {
             val book = bookRepository.getBookById(bookId)
             val title = book?.title ?: "经典"
-            _activeReport.value = generateReportUseCase(bookId, title)
+            val report = generateReportUseCase(bookId, title)
+            _activeReport.value = report
+            
+            // 如果报告中已经有生成的图片，直接显示
+            if (report.artImageUrl != null) {
+                _artImageState.value = ArtImageState.Success(report.artImageUrl)
+            }
+            
             _isAiLoading.value = false
         }
     }
 
     fun closeReport() {
         _activeReport.value = null
+        _artImageState.value = ArtImageState.Idle
     }
 
     fun searchBooks(query: String) {
@@ -327,14 +340,18 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun generateArtImage() {
         val report = _activeReport.value ?: return
-        val prompt = "书籍：《${report.bookTitle}》。认知增量：${report.cognitiveIncrement}。金句：${report.motto}"
         _artImageState.value = ArtImageState.Loading
         viewModelScope.launch {
             try {
-                val result = vivoImageRepository.generateArtImage(prompt, "水墨意境")
+                // 使用升级版方法：基于丰富的报告数据生成文艺手账风格长图
+                val result = vivoImageRepository.generateArtImageFromReport(report)
                 result.fold(
                     onSuccess = { url ->
                         _artImageState.value = ArtImageState.Success(url)
+                        // 将生成的图片 URL 保存到报告中，防止重复生成或显示旧图
+                        val updatedReport = report.copy(artImageUrl = url)
+                        _activeReport.value = updatedReport
+                        reportRepository.saveReport(updatedReport)
                     },
                     onFailure = { e ->
                         _artImageState.value = ArtImageState.Error(e.message ?: "生成失败")

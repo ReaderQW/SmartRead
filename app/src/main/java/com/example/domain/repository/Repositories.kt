@@ -40,6 +40,7 @@ interface ChatRepository {
 
 interface ReportRepository {
     suspend fun generateBlindBoxReport(bookId: Int, bookTitle: String): ReadingReport
+    suspend fun saveReport(report: ReadingReport)
 }
 
 interface VivoImageRepository {

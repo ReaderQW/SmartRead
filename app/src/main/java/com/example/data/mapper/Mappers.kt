@@ -8,7 +8,6 @@ import com.example.data.local.HighlightEntity
 import com.example.data.local.KnowledgeEdgeEntity
 import com.example.data.local.KnowledgeNodeEntity
 import com.example.data.local.NoteEntity
-import com.example.data.local.ReadingReportEntity
 import com.example.domain.model.Book
 import com.example.domain.model.BookPage
 import com.example.domain.model.ChatMessage
@@ -42,6 +41,3 @@ fun KnowledgeNode.toEntity() = KnowledgeNodeEntity(id, bookId, label, category, 
 
 fun KnowledgeEdgeEntity.toDomain() = KnowledgeEdge(id, bookId, source, target, relation, weight)
 fun KnowledgeEdge.toEntity() = KnowledgeEdgeEntity(id, bookId, source, target, relation, weight)
-
-fun ReadingReportEntity.toDomain() = ReadingReport(bookId, bookTitle, logic, empathy, critical, width, innovation, cognitiveIncrement, motto, timestamp)
-fun ReadingReport.toEntity() = ReadingReportEntity(0, bookId, bookTitle, logic, empathy, critical, width, innovation, cognitiveIncrement, motto, timestamp)

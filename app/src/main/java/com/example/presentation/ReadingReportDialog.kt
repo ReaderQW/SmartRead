@@ -1,9 +1,8 @@
 package com.example.presentation
-// 阅读思维盲盒报告弹窗 - 仪式感升级版
+// 阅读思维盲盒报告弹窗 - 文艺手账风格升级版
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,22 +51,7 @@ fun ReadingReportDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val shareStr = """
-                        【SmartRead 学术思想基因鉴定】
-                        原著：《${report.bookTitle}》
-
-                        - 批判性思考得分：${report.critical}/100
-                        - 逻辑严谨度得分：${report.logic}/100
-                        - 认识创新性得分：${report.innovation}/100
-                        - 认知关联广度：${report.width}/100
-                        - 思想情感共鸣：${report.empathy}/100
-
-                        💡【思辨认知增量】：
-                        ${report.cognitiveIncrement}
-                        📜【精神烙印名言】：
-                        ${report.motto}
-                        —— 来自 SmartRead 伴读脑图与AIGC终期仪式感鉴定模块。
-                    """.trimIndent()
+                    val shareStr = buildShareText(report)
                     val intent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_SUBJECT, "SmartRead 思想基因卡")
@@ -120,6 +105,37 @@ fun ReadingReportDialog(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // --- 书籍信息区 ---
+                if (report.bookAuthor.isNotEmpty() || report.bookSummary.isNotEmpty()) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = primaryColor.copy(alpha = 0.08f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.MenuBook, contentDescription = null, tint = primaryColor, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("《${report.bookTitle}》", color = primaryColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                if (report.bookAuthor.isNotEmpty()) {
+                                    Text(" — ${report.bookAuthor}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                                }
+                            }
+                            if (report.bookSummary.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = report.bookSummary,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                    fontSize = 11.sp,
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = TextStyle(lineHeight = 16.sp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 // --- RADAR CHART SECTION ---
                 Box(
@@ -197,6 +213,86 @@ fun ReadingReportDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                // --- 三维交互矩阵可视化 ---
+                val matrix = report.interactionMatrix
+                Text(
+                    "三维交互矩阵",
+                    color = primaryColor,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 划线语义
+                MatrixDimensionCard(
+                    icon = Icons.Default.Edit,
+                    title = "划线语义",
+                    color = Color(0xFF5C6BC0), // 靛蓝
+                    totalCount = matrix.highlightSemantics.totalCount,
+                    tags = matrix.highlightSemantics.keyConcepts,
+                    description = matrix.highlightSemantics.emotionalTone,
+                    excerpts = matrix.highlightSemantics.representativeExcerpts
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 笔记深度
+                MatrixDimensionCard(
+                    icon = Icons.Default.Style,
+                    title = "笔记深度",
+                    color = Color(0xFF26A69A), // 青绿
+                    totalCount = matrix.noteDepth.totalCount,
+                    tags = matrix.noteDepth.insightThemes,
+                    description = "深度评分 ${matrix.noteDepth.depthScore}/100",
+                    excerpts = matrix.noteDepth.representativeNotes
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 对话频率
+                MatrixDimensionCard(
+                    icon = Icons.Default.Forum,
+                    title = "对话频率",
+                    color = Color(0xFFEC407A), // 粉红
+                    totalCount = matrix.dialogueFrequency.totalCount,
+                    tags = matrix.dialogueFrequency.questionTypes,
+                    description = "参与度 ${matrix.dialogueFrequency.engagementLevel}/100",
+                    excerpts = matrix.dialogueFrequency.representativeDialogues
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // --- 精选划线摘录 ---
+                if (report.highlightsList.isNotEmpty()) {
+                    Text("✧ 精选划线摘录", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    report.highlightsList.take(4).forEach { excerpt ->
+                        ExcerptCard(text = excerpt, color = Color(0xFFFFF176))
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // --- 精选读书笔记 ---
+                if (report.notesList.isNotEmpty()) {
+                    Text("✧ 读书笔记精选", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    report.notesList.take(3).forEach { note ->
+                        ExcerptCard(text = note, color = Color(0xFFA5D6A7))
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
+                // --- 精选对话摘录 ---
+                if (report.chatExcerpts.isNotEmpty()) {
+                    Text("✧ AI对话摘录", color = primaryColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    report.chatExcerpts.take(2).forEach { chat ->
+                        ExcerptCard(text = chat, color = Color(0xFFCE93D8))
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 // --- COGNITIVE INCREMENT ---
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)),
@@ -254,11 +350,11 @@ fun ReadingReportDialog(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = primaryColor, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("灵魂共鸣 · 艺术长图", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("灵魂共鸣 · 文艺手账长图", color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 Text(
-                    "基于阅读脉络，由 vivo AI 妙笔生画生成专属艺术图卷",
+                    "基于阅读脉络与三维交互矩阵，由 vivo AI 生成文艺手账风格长图",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
@@ -276,14 +372,14 @@ fun ReadingReportDialog(
                         ) {
                             Icon(Icons.Default.Brush, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("立即生成艺术盲盒长图", fontSize = 12.sp)
+                            Text("生成文艺手账长图", fontSize = 12.sp)
                         }
                     }
                     is ArtImageState.Loading -> {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator(modifier = Modifier.size(32.dp), strokeWidth = 3.dp)
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("vivo AI 正在构思您的精神图卷...", fontSize = 11.sp, color = primaryColor)
+                            Text("vivo AI 正在绘制您的阅读手账...", fontSize = 11.sp, color = primaryColor)
                         }
                     }
                     is ArtImageState.Success -> {
@@ -299,13 +395,13 @@ fun ReadingReportDialog(
                                     .clickable {
                                         val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                             type = "text/plain"
-                                            putExtra(Intent.EXTRA_TEXT, "这是我在 SmartRead 阅读《${report.bookTitle}》生成的灵魂共鸣长图：${state.imageUrl}")
+                                            putExtra(Intent.EXTRA_TEXT, "这是我在 SmartRead 阅读《${report.bookTitle}》生成的文艺手账长图：${state.imageUrl}")
                                         }
                                         context.startActivity(Intent.createChooser(shareIntent, "分享我的艺术长图"))
                                     }
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("点击图片分享您的艺术盲盒", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("点击图片分享您的阅读手账", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             
                             OutlinedButton(
                                 onClick = {
@@ -352,4 +448,119 @@ private fun LabelText(text: String, modifier: Modifier) {
             .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(4.dp))
             .padding(horizontal = 4.dp, vertical = 2.dp)
     )
+}
+
+/**
+ * 三维矩阵维度卡片
+ */
+@Composable
+private fun MatrixDimensionCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    color: Color,
+    totalCount: Int,
+    tags: List<String>,
+    description: String,
+    excerpts: List<String>
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(1.dp, color.copy(alpha = 0.2f))
+    ) {
+        Column(modifier = Modifier.padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(title, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.weight(1f))
+                Text("${totalCount}条", color = color.copy(alpha = 0.7f), fontSize = 10.sp)
+            }
+            if (tags.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = tags.joinToString(" · "),
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                    fontSize = 10.sp
+                )
+            }
+            if (description.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                    fontSize = 9.sp,
+                    fontStyle = FontStyle.Italic
+                )
+            }
+            if (excerpts.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                excerpts.take(2).forEach { excerpt ->
+                    Text(
+                        text = "· $excerpt",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                        fontSize = 10.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        style = TextStyle(lineHeight = 14.sp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * 摘录卡片 - 模拟手账便签风格
+ */
+@Composable
+private fun ExcerptCard(text: String, color: Color) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color.copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+            .border(0.5.dp, color.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+            fontSize = 10.sp,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+            style = TextStyle(lineHeight = 14.sp)
+        )
+    }
+}
+
+/**
+ * 构建分享文本
+ */
+private fun buildShareText(report: ReadingReport): String {
+    val matrix = report.interactionMatrix
+    return """
+        【SmartRead 阅读盲盒报告】
+        原著：《${report.bookTitle}》${if (report.bookAuthor.isNotEmpty()) " — ${report.bookAuthor}" else ""}
+
+        【五维思想基因】
+        - 批判性思考：${report.critical}/100
+        - 逻辑严谨度：${report.logic}/100
+        - 认识创新性：${report.innovation}/100
+        - 认知关联广度：${report.width}/100
+        - 思想情感共鸣：${report.empathy}/100
+
+        【三维交互矩阵】
+        📝 划线语义：${matrix.highlightSemantics.totalCount}条
+          关注概念：${matrix.highlightSemantics.keyConcepts.joinToString("、")}
+        📖 笔记深度：${matrix.noteDepth.totalCount}条（深度${matrix.noteDepth.depthScore}分）
+          洞察主题：${matrix.noteDepth.insightThemes.joinToString("、")}
+        💬 对话频率：${matrix.dialogueFrequency.totalCount}次（参与度${matrix.dialogueFrequency.engagementLevel}分）
+          问题类型：${matrix.dialogueFrequency.questionTypes.joinToString("、")}
+
+        💡【认知增量】
+        ${report.cognitiveIncrement}
+        📜【精神烙印】
+        ${report.motto}
+        —— 来自 SmartRead 伴读脑图与AIGC仪式感鉴定模块。
+    """.trimIndent()
 }
