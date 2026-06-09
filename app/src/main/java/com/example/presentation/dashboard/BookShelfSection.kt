@@ -19,10 +19,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -50,36 +52,53 @@ import com.example.ui.components.EmptyStateView
  *
  * @param books 图书列表，为空时展示空状态，非空时渲染 [BookCard] 列表
  * @param onBookClick 点击某本图书时的回调，参数为被点击的 [Book]
+ * @param onAddBookClick 点击"添加新书"的回调
  */
 @Composable
-fun BookShelfView(books: List<Book>, onBookClick: (Book) -> Unit) {
+fun BookShelfView(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onAddBookClick: () -> Unit = {}
+) {
     if (books.isEmpty()) {
-        BookShelfEmptyState()
+        BookShelfEmptyState(onAddBookClick = onAddBookClick)
     } else {
-        BookShelfListContent(books = books, onBookClick = onBookClick)
+        BookShelfListContent(books = books, onBookClick = onBookClick, onAddBookClick = onAddBookClick)
     }
 }
 
 /**
- * 书架空状态。显示提示图标和引导文案，引导用户调整搜索条件。
+ * 书架空状态。显示提示图标和引导文案，以及添加新书按钮。
  */
 @Composable
-private fun BookShelfEmptyState() {
-    EmptyStateView(
-        icon = Icons.Default.Warning,
-        title = "智能书架目前为空",
-        subtitle = "在搜索框调整关键字或稍后再试。"
-    )
+private fun BookShelfEmptyState(onAddBookClick: () -> Unit = {}) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(48.dp))
+        EmptyStateView(
+            icon = Icons.Default.Warning,
+            title = "智能书架目前为空",
+            subtitle = "点击下方按钮添加你的第一本书籍。"
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        AddBookCard(onClick = onAddBookClick)
+    }
 }
 
 /**
- * 书架非空时的内容列表。包含标题头和每本图书的卡片。
- *
- * @param books 非空的图书列表
- * @param onBookClick 点击某本图书时的回调
+ * 书架非空时的内容列表。包含标题头、每本图书的卡片和底部添加按钮。
  */
 @Composable
-private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit) {
+private fun BookShelfListContent(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onAddBookClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -102,6 +121,94 @@ private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit)
 
         books.forEach { book ->
             BookCard(book = book, onClick = { onBookClick(book) })
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+        HorizontalDivider(
+            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+
+        AddBookCard(onClick = onAddBookClick)
+    }
+}
+
+/**
+ * 添加新书入口卡片。与 [BookCard] 风格一致：左侧加号图标封面 + 右侧引导文案。
+ */
+@Composable
+private fun AddBookCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { onClick() }
+            .testTag("add_book_card"),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        border = BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 添加图标封面
+            Box(
+                modifier = Modifier
+                    .size(width = 85.dp, height = 115.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
+                        )
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add book",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            // 引导文案
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "添加新书",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "上传文档或创建悬浮阅读窗，开始探索思想基因。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "+ 创建书籍",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -143,8 +250,6 @@ private fun BookCard(book: Book, onClick: () -> Unit) {
 /**
  * 图书封面模拟块。使用渐变色背景 + 书本图标 + 标题文字的装饰性封面。
  * 颜色方案根据 book.id 在预置色板中选取。
- *
- * @param book 用于获取标题和 id 以决定颜色方案的图书数据
  */
 @Composable
 private fun BookCover(book: Book) {
@@ -196,8 +301,6 @@ private fun BookCover(book: Book) {
 
 /**
  * 图书详情信息区域。包含分类标签、书名、作者、简介摘要和阅读进度条。
- *
- * @param book 用于获取分类、标题、作者、简介和进度的图书数据
  */
 @Composable
 private fun BookDetails(book: Book) {
@@ -275,7 +378,7 @@ private fun BookDetails(book: Book) {
 }
 
 /**
- * 图书卡片预览。展示一本示例图书的 [BookCard] 渲染效果。
+ * 图书卡片预览。
  */
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
@@ -287,7 +390,7 @@ private fun BookCardPreview() {
                 title = "苏格拉底的申辩",
                 author = "柏拉图",
                 category = "西方哲学",
-                summaryText = "柏拉图的早期对话录，记录了苏格拉底在雅典法庭上的自我辩护。面对不公正的指控，他以非凡的智慧和勇气捍卫真理。",
+                summaryText = "柏拉图的早期对话录，记录了苏格拉底在雅典法庭上的自我辩护。",
                 progress = 0.65f,
                 coverResName = "",
                 type = "DEMO_TEXT"
@@ -298,12 +401,12 @@ private fun BookCardPreview() {
 }
 
 /**
- * 书架空状态预览。展示 [BookShelfEmptyState] 的渲染效果。
+ * 添加新书卡片预览。
  */
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
-private fun BookShelfEmptyStatePreview() {
+private fun AddBookCardPreview() {
     MaterialTheme {
-        BookShelfEmptyState()
+        AddBookCard(onClick = {})
     }
 }

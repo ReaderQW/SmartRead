@@ -66,6 +66,12 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _currentBookId = MutableStateFlow<Int?>(null)
     val currentBookId: StateFlow<Int?> = _currentBookId.asStateFlow()
 
+    private val _isCreatingBook = MutableStateFlow(false)
+    val isCreatingBook: StateFlow<Boolean> = _isCreatingBook.asStateFlow()
+
+    private val _isFloatingServiceActive = MutableStateFlow(false)
+    val isFloatingServiceActive: StateFlow<Boolean> = _isFloatingServiceActive.asStateFlow()
+
     private val _currentPageIndex = MutableStateFlow(0)
     val currentPageIndex: StateFlow<Int> = _currentPageIndex.asStateFlow()
 
@@ -172,6 +178,30 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateColorTheme(colorTheme: ColorTheme) {
         _uiConfig.value = _uiConfig.value.copy(colorTheme = colorTheme)
+    }
+
+    // ──────────────────────────────────────────────
+    // 书籍创建流程
+    // ──────────────────────────────────────────────
+
+    fun startCreatingBook() {
+        _isCreatingBook.value = true
+    }
+
+    fun cancelCreatingBook() {
+        _isCreatingBook.value = false
+    }
+
+    fun createBook(book: Book, onCreated: (Int) -> Unit) {
+        viewModelScope.launch {
+            val id = bookRepository.addBook(book)
+            _isCreatingBook.value = false
+            onCreated(id)
+        }
+    }
+
+    fun setFloatingServiceActive(active: Boolean) {
+        _isFloatingServiceActive.value = active
     }
 
     fun selectBook(bookId: Int?) {
