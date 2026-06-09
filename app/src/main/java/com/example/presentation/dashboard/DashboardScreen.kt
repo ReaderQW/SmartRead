@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -133,43 +136,55 @@ private fun DashboardTopBar(
     ) {
         DashboardLogoRow()
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
+        BasicTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = {
-                Text(
-                    "追溯思想基因、搜读书本、卡片笔记...",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
             singleLine = true,
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = { focusManager.clearFocus() }
             ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(40.dp) // 👈 在这里直接控制搜索栏的绝对高度！
                 .testTag("dashboard_search"),
-            shape = RoundedCornerShape(25.dp)
+            decorationBox = { innerTextField ->
+                Row(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(25.dp))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(25.dp)
+                        )
+                        .padding(horizontal = 12.dp), // 左右内边距
+                    verticalAlignment = Alignment.CenterVertically // 👈 核心：确保内部所有元素垂直居中
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "追溯思想基因、搜读书本、卡片笔记...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField() // 真正的输入框文本
+                    }
+                }
+            }
         )
     }
 }
@@ -252,7 +267,8 @@ private fun DashboardBottomBar(
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        modifier = Modifier.heightIn(max = 64.dp)
     ) {
         NavigationBarItem(
             selected = activeTab == 0,
@@ -322,7 +338,7 @@ private fun DashboardBottomBar(
 private fun DashboardTopBarPreview() {
     MaterialTheme {
         DashboardTopBar(
-            searchQuery = "",
+            searchQuery = "一二三四五",
             onSearchQueryChange = {}
         )
     }
