@@ -1,8 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.ChatDao
-import com.example.data.mapper.toDomain
-import com.example.data.mapper.toEntity
+import com.example.data.local.FileDataSource
 import com.example.data.remote.AigcRemoteDataSource
 import com.example.domain.model.ChatMessage
 import com.example.domain.model.KnowledgeEdge
@@ -11,16 +9,15 @@ import com.example.domain.repository.ChatRepository
 import com.example.domain.repository.KnowledgeRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 class ChatRepositoryImpl(
-    private val chatDao: ChatDao,
+    private val fileDataSource: FileDataSource,
     private val aigc: AigcRemoteDataSource,
     private val knowledgeRepository: KnowledgeRepository
 ) : ChatRepository {
     override fun getChatMessagesForBook(bookId: Int): Flow<List<ChatMessage>> =
-        chatDao.observeMessagesForBook(bookId).map { messages -> messages.map { it.toDomain() } }
+        fileDataSource.observeMessagesForBook(bookId)
 
     override suspend fun sendSocraticMessage(
         bookId: Int,
@@ -28,15 +25,15 @@ class ChatRepositoryImpl(
         passage: String,
         userText: String
     ): String = withContext(Dispatchers.IO) {
-        val userId = chatDao.insertMessage(
-            ChatMessage(bookId = bookId, sender = "USER", content = userText, selectedText = passage).toEntity()
+        val userId = fileDataSource.addMessage(
+            ChatMessage(bookId = bookId, sender = "USER", content = userText, selectedText = passage)
         )
-        val historyPrompt = chatDao.getMessagesForBook(bookId).takeLast(10).joinToString("\n") {
+        val historyPrompt = fileDataSource.getMessagesForBook(bookId).takeLast(10).joinToString("\n") {
             "${it.sender}: ${it.content}"
         }
         val reply = aigc.socraticReply(bookTitle, passage, userText, historyPrompt)
-        val aiId = chatDao.insertMessage(
-            ChatMessage(bookId = bookId, sender = "AI", content = reply, selectedText = passage).toEntity()
+        val aiId = fileDataSource.addMessage(
+            ChatMessage(bookId = bookId, sender = "AI", content = reply, selectedText = passage)
         )
 
         knowledgeRepository.indexText(bookId, "CHAT", userId.toString(), userText)

@@ -1,0 +1,41 @@
+[
+  {
+    "id": 1,
+    "title": "苏格拉底的申辩",
+    "author": "柏拉图 (Plato)",
+    "coverResName": "ic_apology",
+    "summaryText": "古希腊哲学的经典文本，记录苏格拉底在法庭上的自我辩护。",
+    "category": "古典哲学",
+    "progress": 0.4,
+    "type": "DEMO_TEXT",
+    "totalPages": 4,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000
+  },
+  {
+    "id": 2,
+    "title": "新工具",
+    "author": "弗兰西斯·培根 (Francis Bacon)",
+    "coverResName": "ic_novum",
+    "summaryText": "经验主义方法论的代表，强调通过归纳与实验重建知识。",
+    "category": "科学认识论",
+    "progress": 0.1,
+    "type": "DEMO_TEXT",
+    "totalPages": 3,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000
+  },
+  {
+    "id": 3,
+    "title": "思想录",
+    "author": "帕斯卡尔 (Blaise Pascal)",
+    "coverResName": "ic_pensees",
+    "summaryText": "关于人的脆弱、尊严、理性与信仰的深刻沉思。",
+    "category": "存在反思录",
+    "progress": 0.0,
+    "type": "DEMO_TEXT",
+    "totalPages": 2,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000000000
+  }
+]
