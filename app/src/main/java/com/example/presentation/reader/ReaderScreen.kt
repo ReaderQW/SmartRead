@@ -73,6 +73,7 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
     val scannedOcrText by viewModel.scannedOcrText.collectAsStateWithLifecycle()
     val isAiLoading by viewModel.isAiLoading.collectAsStateWithLifecycle()
     val activeReport by viewModel.activeReport.collectAsStateWithLifecycle()
+    val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
 
@@ -258,7 +259,8 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
                     commentInputText = hl.comment ?: ""
                     isCommentDialogShow = true
                 },
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                readingFontFamily = uiConfig.readingFont.toFontFamily()
             )
 
             // Floating selection toolbar when text is selected

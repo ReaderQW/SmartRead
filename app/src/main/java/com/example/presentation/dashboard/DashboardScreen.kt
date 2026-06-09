@@ -2,6 +2,7 @@ package com.example.presentation.dashboard
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +11,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -30,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +52,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.presentation.settings.SettingsSidebar
 import com.example.presentation.viewmodel.SmartReadViewModel
 
 /**
@@ -63,15 +68,19 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     val notes by viewModel.allNotes.collectAsStateWithLifecycle()
     val nodes by viewModel.knowledgeNodes.collectAsStateWithLifecycle()
     val edges by viewModel.knowledgeEdges.collectAsStateWithLifecycle()
+    val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()
 
     var activeTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
+    var showSettings by remember { mutableStateOf(false) }
 
-    Scaffold(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
         topBar = {
             DashboardTopBar(
                 searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it }
+                onSearchQueryChange = { searchQuery = it },
+                onLogoClick = { showSettings = true }
             )
         },
         bottomBar = {
@@ -110,6 +119,18 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
             }
         }
     }
+
+        // 设置侧边栏覆盖层（在 Scaffold 之上，覆盖全屏包括顶栏和底栏）
+        SettingsSidebar(
+            isVisible = showSettings,
+            uiConfig = uiConfig,
+            onDismiss = { showSettings = false },
+            onUpdateThemeMode = { viewModel.updateThemeMode(it) },
+            onUpdateUiFont = { viewModel.updateUiFont(it) },
+            onUpdateReadingFont = { viewModel.updateReadingFont(it) },
+            onUpdateColorTheme = { viewModel.updateColorTheme(it) }
+        )
+    }
 }
 
 /**
@@ -121,7 +142,8 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
 @Composable
 private fun DashboardTopBar(
     searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
+    onSearchQueryChange: (String) -> Unit,
+    onLogoClick: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -131,56 +153,71 @@ private fun DashboardTopBar(
             .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        DashboardLogoRow()
+        DashboardLogoRow(onLogoClick = onLogoClick)
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-        OutlinedTextField(
+        BasicTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = {
-                Text(
-                    "追溯思想基因、搜读书本、卡片笔记...",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 13.sp
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            },
             singleLine = true,
+            textStyle = TextStyle(
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(
                 onSearch = { focusManager.clearFocus() }
             ),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-            ),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(40.dp) // 👈 在这里直接控制搜索栏的绝对高度！
                 .testTag("dashboard_search"),
-            shape = RoundedCornerShape(25.dp)
+            decorationBox = { innerTextField ->
+                Row(
+                    modifier = Modifier
+                        .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(25.dp))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            shape = RoundedCornerShape(25.dp)
+                        )
+                        .padding(horizontal = 12.dp), // 左右内边距
+                    verticalAlignment = Alignment.CenterVertically // 👈 核心：确保内部所有元素垂直居中
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "追溯思想基因、搜读书本、卡片笔记...",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField() // 真正的输入框文本
+                    }
+                }
+            }
         )
     }
 }
 
 /**
  * 品牌标识行。左侧为 SmartRead 图标 + 标题，右侧为 Insight Mode 徽章。
+ * 点击可打开设置侧边栏。
  */
 @Composable
-private fun DashboardLogoRow() {
+private fun DashboardLogoRow(onLogoClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onLogoClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -252,7 +289,8 @@ private fun DashboardBottomBar(
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = 8.dp
+        tonalElevation = 8.dp,
+        modifier = Modifier.heightIn(max = 64.dp)
     ) {
         NavigationBarItem(
             selected = activeTab == 0,
@@ -322,7 +360,7 @@ private fun DashboardBottomBar(
 private fun DashboardTopBarPreview() {
     MaterialTheme {
         DashboardTopBar(
-            searchQuery = "",
+            searchQuery = "一二三四五",
             onSearchQueryChange = {}
         )
     }

@@ -34,3 +34,27 @@ val Typography =
     )
     */
   )
+
+/**
+ * 将指定 [fontFamily] 应用到 Typography 的所有文本样式上。
+ * 用于全局切换界面字体（UI Font），确保所有 Material 组件统一继承。
+ */
+fun Typography.withFontFamily(fontFamily: FontFamily): Typography {
+  return this.copy(
+    displayLarge = displayLarge.copy(fontFamily = fontFamily),
+    displayMedium = displayMedium.copy(fontFamily = fontFamily),
+    displaySmall = displaySmall.copy(fontFamily = fontFamily),
+    headlineLarge = headlineLarge.copy(fontFamily = fontFamily),
+    headlineMedium = headlineMedium.copy(fontFamily = fontFamily),
+    headlineSmall = headlineSmall.copy(fontFamily = fontFamily),
+    titleLarge = titleLarge.copy(fontFamily = fontFamily),
+    titleMedium = titleMedium.copy(fontFamily = fontFamily),
+    titleSmall = titleSmall.copy(fontFamily = fontFamily),
+    bodyLarge = bodyLarge.copy(fontFamily = fontFamily),
+    bodyMedium = bodyMedium.copy(fontFamily = fontFamily),
+    bodySmall = bodySmall.copy(fontFamily = fontFamily),
+    labelLarge = labelLarge.copy(fontFamily = fontFamily),
+    labelMedium = labelMedium.copy(fontFamily = fontFamily),
+    labelSmall = labelSmall.copy(fontFamily = fontFamily),
+  )
+}
