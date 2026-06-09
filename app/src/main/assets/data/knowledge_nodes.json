@@ -1,0 +1,9 @@
+[
+  { "id": "book_1", "bookId": 1, "label": "苏格拉底的申辩", "category": "Book", "size": 1.8 },
+  { "id": "book_2", "bookId": 2, "label": "新工具", "category": "Book", "size": 1.8 },
+  { "id": "book_3", "bookId": 3, "label": "思想录", "category": "Book", "size": 1.8 },
+  { "id": "landmark_virtue", "bookId": null, "label": "美德即知识", "category": "Concept", "size": 1.4 },
+  { "id": "landmark_idols", "bookId": null, "label": "四大假象", "category": "Concept", "size": 1.4 },
+  { "id": "landmark_reed", "bookId": null, "label": "会思想的芦苇", "category": "Concept", "size": 1.4 },
+  { "id": "landmark_epistemology", "bookId": null, "label": "认识论", "category": "Mindset", "size": 1.6 }
+]

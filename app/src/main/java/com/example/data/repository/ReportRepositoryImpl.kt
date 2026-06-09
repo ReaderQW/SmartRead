@@ -1,11 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.ChatDao
-import com.example.data.local.HighlightDao
-import com.example.data.local.NoteDao
-import com.example.data.local.ReportDao
-import com.example.data.mapper.toDomain
-import com.example.data.mapper.toEntity
+import com.example.data.local.FileDataSource
 import com.example.data.remote.AigcRemoteDataSource
 import com.example.domain.model.ReadingReport
 import com.example.domain.repository.ReportRepository
@@ -13,16 +8,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ReportRepositoryImpl(
-    private val reportDao: ReportDao,
-    private val noteDao: NoteDao,
-    private val highlightDao: HighlightDao,
-    private val chatDao: ChatDao,
+    private val fileDataSource: FileDataSource,
     private val aigc: AigcRemoteDataSource
 ) : ReportRepository {
     override suspend fun generateBlindBoxReport(bookId: Int, bookTitle: String): ReadingReport = withContext(Dispatchers.IO) {
-        val notes = noteDao.getNotesForBook(bookId)
-        val highlights = highlightDao.getHighlightsForBook(bookId)
-        val chats = chatDao.getMessagesForBook(bookId)
+        val notes = fileDataSource.getNotesForBook(bookId)
+        val highlights = fileDataSource.getHighlightsForBook(bookId)
+        val chats = fileDataSource.getMessagesForBook(bookId)
 
         val notesSummaryText = notes.joinToString("\n") { "摘录:${it.originalText} | 感悟:${it.userNote}" }
         val highlightsText = highlights.joinToString("\n") { it.text }
@@ -56,7 +48,7 @@ class ReportRepositoryImpl(
                 timestamp = System.currentTimeMillis()
             )
         }
-        reportDao.insertReport(report.toEntity())
+        fileDataSource.insertReport(report)
         report
     }
 }

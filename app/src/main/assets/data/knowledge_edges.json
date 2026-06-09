@@ -1,0 +1,8 @@
+[
+  { "id": "e1", "bookId": 1, "source": "book_1", "target": "landmark_virtue", "relation": "核心主张" },
+  { "id": "e2", "bookId": 2, "source": "book_2", "target": "landmark_idols", "relation": "批判对象" },
+  { "id": "e3", "bookId": 3, "source": "book_3", "target": "landmark_reed", "relation": "存在隐喻" },
+  { "id": "e17", "bookId": null, "source": "landmark_virtue", "target": "landmark_epistemology", "relation": "导向" },
+  { "id": "e18", "bookId": null, "source": "landmark_idols", "target": "landmark_epistemology", "relation": "属于" },
+  { "id": "e19", "bookId": null, "source": "landmark_reed", "target": "landmark_epistemology", "relation": "追问" }
+]

@@ -1,8 +1,6 @@
 package com.example.data.repository
 
-import com.example.data.local.NoteDao
-import com.example.data.mapper.toDomain
-import com.example.data.mapper.toEntity
+import com.example.data.local.FileDataSource
 import com.example.data.remote.AigcRemoteDataSource
 import com.example.domain.model.KnowledgeEdge
 import com.example.domain.model.KnowledgeNode
@@ -11,21 +9,18 @@ import com.example.domain.repository.KnowledgeRepository
 import com.example.domain.repository.NoteRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 class NoteRepositoryImpl(
-    private val noteDao: NoteDao,
+    private val fileDataSource: FileDataSource,
     private val aigc: AigcRemoteDataSource,
     private val knowledgeRepository: KnowledgeRepository
 ) : NoteRepository {
-    override val allNotes: Flow<List<Note>> = noteDao.observeAllNotes().map { entities ->
-        entities.map { it.toDomain() }
-    }
+    override val allNotes: Flow<List<Note>> = fileDataSource.observeAllNotes
 
     override fun getNotesForBook(bookId: Int): Flow<List<Note>> =
-        noteDao.observeNotesForBook(bookId).map { entities -> entities.map { it.toDomain() } }
+        fileDataSource.observeNotesForBook(bookId)
 
     override suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String): Note = withContext(Dispatchers.IO) {
         val aiSummary = aigc.noteInsight(originalText, userNote)
@@ -43,13 +38,13 @@ class NoteRepositoryImpl(
             aiSummary = aiSummary,
             tags = cleanTags
         )
-        val id = noteDao.insertNote(note.toEntity()).toInt()
+        val id = fileDataSource.addNote(note).toInt()
         val saved = note.copy(id = id)
 
         val noteNodeId = "note_$id"
         knowledgeRepository.addNode(KnowledgeNode(noteNodeId, bookId, "感悟#$id", "Note", 1.1f))
         knowledgeRepository.addEdge(KnowledgeEdge("edge_note_$id", bookId, "book_$bookId", noteNodeId, "撰写"))
-        
+
         cleanTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { tag ->
             val tagNodeId = "tag_$tag"
             knowledgeRepository.addNode(KnowledgeNode(tagNodeId, bookId, tag, "Mindset", 1.3f))
@@ -57,12 +52,12 @@ class NoteRepositoryImpl(
         }
 
         try {
-            val existingNoteEntities = noteDao.getNotesForBook(bookId)
-            val recentNoteStrings = existingNoteEntities
+            val existingNotes = fileDataSource.getNotesForBook(bookId)
+            val recentNoteStrings = existingNotes
                 .filter { it.id != saved.id }
                 .take(10)
                 .map { "${it.originalText} -> ${it.userNote}" }
-            
+
             if (recentNoteStrings.isNotEmpty()) {
                 val relationships = aigc.inferRelationships("$originalText -> $userNote", recentNoteStrings)
                 relationships.forEachIndexed { index, rel: JSONObject ->
@@ -74,7 +69,7 @@ class NoteRepositoryImpl(
                     )
                 }
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // AI 推理失败不影响主流程
         }
 
@@ -83,6 +78,6 @@ class NoteRepositoryImpl(
     }
 
     override suspend fun deleteNote(note: Note) = withContext(Dispatchers.IO) {
-        noteDao.deleteNote(note.toEntity())
+        fileDataSource.deleteNote(note)
     }
 }

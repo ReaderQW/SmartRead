@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "bookId": 1,
+    "pageIndex": 2,
+    "text": "未经省察的生活是不值得度过的",
+    "comment": null,
+    "colorHex": "#FFEB3B",
+    "timestamp": 1700000000000
+  },
+  {
+    "id": 2,
+    "bookId": 2,
+    "pageIndex": 0,
+    "text": "知识就是力量",
+    "comment": null,
+    "colorHex": "#FFEB3B",
+    "timestamp": 1700000000000
+  }
+]
