@@ -1,6 +1,8 @@
 package com.example.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.FileDataSource
@@ -30,6 +32,7 @@ import com.example.ui.theme.ColorTheme
 import com.example.ui.theme.FontOption
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.UiConfig
+import com.example.presentation.SmartReadFloatingService
 import com.example.utils.BookDummyData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -65,6 +68,9 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _currentBookId = MutableStateFlow<Int?>(null)
     val currentBookId: StateFlow<Int?> = _currentBookId.asStateFlow()
+
+    private val _isCreatingBook = MutableStateFlow(false)
+    val isCreatingBook: StateFlow<Boolean> = _isCreatingBook.asStateFlow()
 
     private val _currentPageIndex = MutableStateFlow(0)
     val currentPageIndex: StateFlow<Int> = _currentPageIndex.asStateFlow()
@@ -247,6 +253,20 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         _isFloatingAssistantOpen.value = open
     }
 
+    fun setFloatingServiceActive(active: Boolean) {
+        val context = getApplication<Application>()
+        val intent = Intent(context, SmartReadFloatingService::class.java)
+        if (active) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } else {
+            context.stopService(intent)
+        }
+    }
+
     fun sendSocraticMessage(userMsg: String) {
         val bookId = _currentBookId.value ?: return
         if (userMsg.trim().isEmpty()) return
@@ -335,6 +355,22 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             bookRepository.addBook(book)
             _searchResults.value = emptyList()
+        }
+    }
+
+    fun startCreatingBook() {
+        _isCreatingBook.value = true
+    }
+
+    fun cancelCreatingBook() {
+        _isCreatingBook.value = false
+    }
+
+    fun createBook(book: Book, onComplete: (Int) -> Unit) {
+        viewModelScope.launch {
+            val newId = bookRepository.addBook(book)
+            _isCreatingBook.value = false
+            onComplete(newId)
         }
     }
 

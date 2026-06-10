@@ -49,14 +49,19 @@ import com.example.ui.components.EmptyStateView
  * 书架视图入口。根据图书列表是否为空，展示空状态或图书列表。
  *
  * @param books 图书列表，为空时展示空状态，非空时渲染 [BookCard] 列表
- * @param onBookClick 点击某本图书时的回调，参数为被点击的 [Book]
+ * @param onBookClick 点击某本图书时的回调，参数为被点击 of [Book]
+ * @param onAddClick 点击添加新书按钮时的回调
  */
 @Composable
-fun BookShelfView(books: List<Book>, onBookClick: (Book) -> Unit) {
+fun BookShelfView(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onAddClick: () -> Unit
+) {
     if (books.isEmpty()) {
-        BookShelfEmptyState()
+        BookShelfEmptyState(onAddClick = onAddClick)
     } else {
-        BookShelfListContent(books = books, onBookClick = onBookClick)
+        BookShelfListContent(books = books, onBookClick = onBookClick, onAddClick = onAddClick)
     }
 }
 
@@ -64,12 +69,24 @@ fun BookShelfView(books: List<Book>, onBookClick: (Book) -> Unit) {
  * 书架空状态。显示提示图标和引导文案，引导用户调整搜索条件。
  */
 @Composable
-private fun BookShelfEmptyState() {
-    EmptyStateView(
-        icon = Icons.Default.Warning,
-        title = "智能书架目前为空",
-        subtitle = "在搜索框调整关键字或稍后再试。"
-    )
+private fun BookShelfEmptyState(onAddClick: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        EmptyStateView(
+            icon = Icons.Default.Warning,
+            title = "智能书架目前为空",
+            subtitle = "在搜索框调整关键字，或点击下方按钮添加新书。"
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        androidx.compose.material3.Button(onClick = onAddClick) {
+            Icon(Icons.Default.Book, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("添加新书 / 导入文档")
+        }
+    }
 }
 
 /**
@@ -77,28 +94,55 @@ private fun BookShelfEmptyState() {
  *
  * @param books 非空的图书列表
  * @param onBookClick 点击某本图书时的回调
+ * @param onAddClick 点击添加新书按钮时的回调
  */
 @Composable
-private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit) {
+private fun BookShelfListContent(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onAddClick: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        Text(
-            text = "藏书阁 Exquisite Bookshelf",
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Serif
-        )
-        Text(
-            text = "点击经典，即可进入智能高亮、OCR截图与苏格拉底提问伴阅空间。",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 12.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "藏书阁 Exquisite Bookshelf",
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif
+                )
+                Text(
+                    text = "点击经典，即可进入智能高亮、OCR截图与伴阅空间。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+            androidx.compose.material3.IconButton(
+                onClick = onAddClick,
+                modifier = Modifier
+                    .background(MaterialTheme.colorScheme.primaryContainer, CircleShape)
+                    .size(36.dp)
+            ) {
+                Icon(
+                    Icons.Default.Book,
+                    contentDescription = "Add Book",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
 
         books.forEach { book ->
             BookCard(book = book, onClick = { onBookClick(book) })
@@ -304,6 +348,6 @@ private fun BookCardPreview() {
 @Composable
 private fun BookShelfEmptyStatePreview() {
     MaterialTheme {
-        BookShelfEmptyState()
+        BookShelfEmptyState(onAddClick = {})
     }
 }

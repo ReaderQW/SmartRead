@@ -73,6 +73,7 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     var activeTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
+    var selectedNoteBookId by remember { mutableStateOf<Int?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -102,7 +103,8 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                         it.title.contains(searchQuery, true) ||
                             it.author.contains(searchQuery, true)
                     },
-                    onBookClick = { viewModel.selectBook(it.id) }
+                    onBookClick = { viewModel.selectBook(it.id) },
+                    onAddClick = { viewModel.startCreatingBook() }
                 )
                 1 -> NotesListView(
                     notes = notes.filter {
@@ -110,6 +112,9 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                             it.originalText.contains(searchQuery, true) ||
                             it.tags.contains(searchQuery, true)
                     },
+                    books = books,
+                    selectedBookId = selectedNoteBookId,
+                    onSelectBook = { selectedNoteBookId = it },
                     onDelete = { viewModel.deleteNote(it) }
                 )
                 2 -> KnowledgeGraphView(
