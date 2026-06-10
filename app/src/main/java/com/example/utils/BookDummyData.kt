@@ -2,7 +2,7 @@ package com.example.utils
 
 object BookDummyData {
 
-    val excerpts = mapOf(
+    val excerpts = mutableMapOf(
         1 to listOf(
             """
                 【第一页：理智的谦逊】

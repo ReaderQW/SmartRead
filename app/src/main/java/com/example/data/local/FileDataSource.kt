@@ -91,6 +91,11 @@ class FileDataSource(private val context: Context) {
         saveBooks()
     }
 
+    fun deleteBook(book: Book) {
+        _books.value = _books.value.filter { it.id != book.id }
+        saveBooks()
+    }
+
     // ── Highlight CRUD ──
     fun getHighlightsForBook(bookId: Int): List<Highlight> =
         _highlights.value.filter { it.bookId == bookId }

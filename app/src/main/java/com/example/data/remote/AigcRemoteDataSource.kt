@@ -7,6 +7,15 @@ import java.util.UUID
 class AigcRemoteDataSource(
     private val blueLmApi: BlueLmApi = BlueLmClient().api
 ) {
+    /**
+     * AI 生成书籍简介
+     */
+    suspend fun generateSummary(title: String): String {
+        return generate(
+            prompt = "请为书籍《$title》写一句简洁的中文简介（50字以内），概括其核心思想和价值。",
+            systemPrompt = "你是一位专业的书籍编辑，擅长用精炼的语言介绍书籍。"
+        )
+    }
     // 根据 AIGC 比赛官方文档配置
     private val appKey = "sk-xuanji-2026316046-SVRqbXNtWmdlaU1oUWlZSQ="
     private val modelName = "Doubao-Seed-2.0-mini" // 官方文档推荐模型

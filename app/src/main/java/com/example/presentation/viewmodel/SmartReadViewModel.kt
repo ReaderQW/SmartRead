@@ -66,6 +66,12 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _currentBookId = MutableStateFlow<Int?>(null)
     val currentBookId: StateFlow<Int?> = _currentBookId.asStateFlow()
 
+    private val _isCreatingBook = MutableStateFlow(false)
+    val isCreatingBook: StateFlow<Boolean> = _isCreatingBook.asStateFlow()
+
+    private val _isFloatingServiceActive = MutableStateFlow(false)
+    val isFloatingServiceActive: StateFlow<Boolean> = _isFloatingServiceActive.asStateFlow()
+
     private val _currentPageIndex = MutableStateFlow(0)
     val currentPageIndex: StateFlow<Int> = _currentPageIndex.asStateFlow()
 
@@ -172,6 +178,63 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateColorTheme(colorTheme: ColorTheme) {
         _uiConfig.value = _uiConfig.value.copy(colorTheme = colorTheme)
+    }
+
+    // ──────────────────────────────────────────────
+    // 书籍创建流程
+    // ──────────────────────────────────────────────
+
+    fun startCreatingBook() {
+        _isCreatingBook.value = true
+    }
+
+    fun cancelCreatingBook() {
+        _isCreatingBook.value = false
+    }
+
+    /**
+     * 删除一本书
+     */
+    fun deleteBook(book: Book) {
+        viewModelScope.launch {
+            fileDataSource.deleteBook(book)
+            if (_currentBookId.value == book.id) {
+                _currentBookId.value = null
+            }
+        }
+    }
+
+    fun createBook(book: Book, onCreated: (Int) -> Unit) {
+        viewModelScope.launch {
+            val id = bookRepository.addBook(book)
+            _isCreatingBook.value = false
+            onCreated(id)
+        }
+    }
+
+    fun startFloatingService(context: android.content.Context) {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
+            if (!android.provider.Settings.canDrawOverlays(context.applicationContext)) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    android.widget.Toast.makeText(
+                        context, "请在设置中开启「悬浮窗权限」", android.widget.Toast.LENGTH_LONG
+                    ).show()
+                }
+                return@launch
+            }
+            try {
+                val intent = android.content.Intent(context, com.example.presentation.SmartReadFloatingService::class.java)
+                context.startForegroundService(intent)
+                _isFloatingServiceActive.value = true
+            } catch (e: Exception) {
+                android.util.Log.e("FloatingService", "Start failed", e)
+                _isFloatingServiceActive.value = false
+            }
+        }
+    }
+
+    fun setFloatingServiceActive(active: Boolean) {
+        _isFloatingServiceActive.value = active
     }
 
     fun selectBook(bookId: Int?) {
