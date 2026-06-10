@@ -2,12 +2,89 @@
   {
     "id": 1,
     "bookId": 1,
-    "pageIndex": 2,
-    "originalText": "未经省察的生活是不值得度过的",
-    "userNote": "每天睡前问自己三个问题：今天我做了什么？为什么这么做？还能怎么改进？",
-    "aiSummary": "强调反思性自觉对人生意义的决定性作用。",
-    "tags": "苏格拉底,自我省察",
+    "pageIndex": 0,
+    "originalText": "我至少比他们聪明一点——因为我深知自己一无所知。",
+    "userNote": "‘承认无知’是智慧的最高形态。只有排空先入为主的偏见，真理才能涌入。",
+    "aiSummary": "否定之美",
+    "tags": "理智的谦逊",
     "aiStatus": "READY",
     "timestamp": 1700000000000
+  },
+  {
+    "id": 2,
+    "bookId": 1,
+    "pageIndex": 2,
+    "originalText": "未经省察的生活是不值得度过的。",
+    "userNote": "省察是对‘存在合法性’的追问。不思考的人只是在被动地通过时间。",
+    "aiSummary": "存在自觉",
+    "tags": "生命省察",
+    "aiStatus": "READY",
+    "timestamp": 1700000000001
+  },
+  {
+    "id": 3,
+    "bookId": 1,
+    "pageIndex": 3,
+    "originalText": "我像一只牛虻，不断叮咬这匹伟大的骏马——雅典城邦，唤醒它、劝诫它、责备它。",
+    "userNote": "苏格拉底自比牛虻，他的使命不是传授知识，而是刺痛沉睡的灵魂，迫使人们审视自己的信念。这种"唤醒"精神是一切批判性思维的起点。",
+    "aiSummary": "唤醒灵魂",
+    "tags": "牛虻精神",
+    "aiStatus": "READY",
+    "timestamp": 1700000000002
+  },
+  {
+    "id": 4,
+    "bookId": 2,
+    "pageIndex": 0,
+    "originalText": "我们必须建立‘新工具’——这就是通过系统的、彻底的经验积累和有目的地归纳实验。",
+    "userNote": "培根提倡抛弃虚空建塔的字面论说，去建立注重归纳实验的"新工具"。这不就是帕斯卡提到的"几何精神"在科学上的投影吗？拒绝无意义的文字障，用系统化的方式去抓取和重构真实世界的规律，才能让人类的智理真正落地。",
+    "aiSummary": "实证精神的基石",
+    "tags": "经验归纳",
+    "aiStatus": "READY",
+    "timestamp": 1700000000003
+  },
+  {
+    "id": 5,
+    "bookId": 2,
+    "pageIndex": 1,
+    "originalText": "洞穴偶像：每个人都生活在自己特定的狭小洞穴中。",
+    "userNote": "培根预言了"信息茧房"。个体的背景、教育和喜好成了阻碍真理的滤镜。",
+    "aiSummary": "主观滤镜",
+    "tags": "信息茧房",
+    "aiStatus": "READY",
+    "timestamp": 1700000000004
+  },
+  {
+    "id": 6,
+    "bookId": 3,
+    "pageIndex": 0,
+    "originalText": "人是一支会思想的芦苇。",
+    "userNote": "帕斯卡尔精确捕捉到了人的两面性：生理上的极度脆弱与精神上的无限崇高。",
+    "aiSummary": "思考的力量",
+    "tags": "人性尊严",
+    "aiStatus": "READY",
+    "timestamp": 1700000000005
+  },
+  {
+    "id": 7,
+    "bookId": 3,
+    "pageIndex": 1,
+    "originalText": "几何精神依赖严谨明晰的逻辑、公理体系以及一条条推论。",
+    "userNote": "逻辑与直觉并不是对立的。真正的大师必须在严密的推理与瞬间的顿悟间游走。",
+    "aiSummary": "理性的秩序",
+    "tags": "几何精神",
+    "aiStatus": "READY",
+    "timestamp": 1700000000006
+  },
+  {
+    "id": 8,
+    "bookId": 3,
+    "pageIndex": 2,
+    "originalText": "敏感精神——凭直觉在一瞥之间洞察事物本质的精神。",
+    "userNote": "与几何精神的步步推理不同，敏感精神是一种整体性的直觉把握。帕斯卡认为，真正伟大的思想者必须同时具备这两种精神。",
+    "aiSummary": "直觉洞见",
+    "tags": "敏感精神",
+    "aiStatus": "READY",
+    "timestamp": 1700000000007
   }
 ]

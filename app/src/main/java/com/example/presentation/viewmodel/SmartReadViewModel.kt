@@ -1,6 +1,8 @@
 package com.example.presentation.viewmodel
 
 import android.app.Application
+import android.content.Intent
+import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.local.FileDataSource
@@ -30,6 +32,7 @@ import com.example.ui.theme.ColorTheme
 import com.example.ui.theme.FontOption
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.UiConfig
+import com.example.presentation.SmartReadFloatingService
 import com.example.utils.BookDummyData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -68,9 +71,6 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _isCreatingBook = MutableStateFlow(false)
     val isCreatingBook: StateFlow<Boolean> = _isCreatingBook.asStateFlow()
-
-    private val _isFloatingServiceActive = MutableStateFlow(false)
-    val isFloatingServiceActive: StateFlow<Boolean> = _isFloatingServiceActive.asStateFlow()
 
     private val _currentPageIndex = MutableStateFlow(0)
     val currentPageIndex: StateFlow<Int> = _currentPageIndex.asStateFlow()
@@ -180,63 +180,6 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         _uiConfig.value = _uiConfig.value.copy(colorTheme = colorTheme)
     }
 
-    // ──────────────────────────────────────────────
-    // 书籍创建流程
-    // ──────────────────────────────────────────────
-
-    fun startCreatingBook() {
-        _isCreatingBook.value = true
-    }
-
-    fun cancelCreatingBook() {
-        _isCreatingBook.value = false
-    }
-
-    /**
-     * 删除一本书
-     */
-    fun deleteBook(book: Book) {
-        viewModelScope.launch {
-            fileDataSource.deleteBook(book)
-            if (_currentBookId.value == book.id) {
-                _currentBookId.value = null
-            }
-        }
-    }
-
-    fun createBook(book: Book, onCreated: (Int) -> Unit) {
-        viewModelScope.launch {
-            val id = bookRepository.addBook(book)
-            _isCreatingBook.value = false
-            onCreated(id)
-        }
-    }
-
-    fun startFloatingService(context: android.content.Context) {
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            if (!android.provider.Settings.canDrawOverlays(context.applicationContext)) {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    android.widget.Toast.makeText(
-                        context, "请在设置中开启「悬浮窗权限」", android.widget.Toast.LENGTH_LONG
-                    ).show()
-                }
-                return@launch
-            }
-            try {
-                val intent = android.content.Intent(context, com.example.presentation.SmartReadFloatingService::class.java)
-                context.startForegroundService(intent)
-                _isFloatingServiceActive.value = true
-            } catch (e: Exception) {
-                android.util.Log.e("FloatingService", "Start failed", e)
-                _isFloatingServiceActive.value = false
-            }
-        }
-    }
-
-    fun setFloatingServiceActive(active: Boolean) {
-        _isFloatingServiceActive.value = active
-    }
-
     fun selectBook(bookId: Int?) {
         _currentBookId.value = bookId
         _currentPageIndex.value = 0
@@ -308,6 +251,20 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setFloatingAssistantOpen(open: Boolean) {
         _isFloatingAssistantOpen.value = open
+    }
+
+    fun setFloatingServiceActive(active: Boolean) {
+        val context = getApplication<Application>()
+        val intent = Intent(context, SmartReadFloatingService::class.java)
+        if (active) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } else {
+            context.stopService(intent)
+        }
     }
 
     fun sendSocraticMessage(userMsg: String) {
@@ -398,6 +355,22 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             bookRepository.addBook(book)
             _searchResults.value = emptyList()
+        }
+    }
+
+    fun startCreatingBook() {
+        _isCreatingBook.value = true
+    }
+
+    fun cancelCreatingBook() {
+        _isCreatingBook.value = false
+    }
+
+    fun createBook(book: Book, onComplete: (Int) -> Unit) {
+        viewModelScope.launch {
+            val newId = bookRepository.addBook(book)
+            _isCreatingBook.value = false
+            onComplete(newId)
         }
     }
 

@@ -30,7 +30,8 @@
 
         <service
             android:name=".presentation.SmartReadFloatingService"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="systemExempted" />
 
     </application>
 

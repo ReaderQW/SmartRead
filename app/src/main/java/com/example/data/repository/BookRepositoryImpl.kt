@@ -3,7 +3,6 @@ package com.example.data.repository
 import com.example.data.local.FileDataSource
 import com.example.data.remote.AigcRemoteDataSource
 import com.example.domain.model.Book
-import com.example.domain.model.KnowledgeEdge
 import com.example.domain.model.KnowledgeNode
 import com.example.domain.repository.BookRepository
 import com.example.domain.repository.KnowledgeRepository
@@ -45,7 +44,16 @@ class BookRepositoryImpl(
 
     override suspend fun addBook(book: Book): Int = withContext(Dispatchers.IO) {
         val id = fileDataSource.addBook(book)
-        knowledgeRepository.addNode(KnowledgeNode("book_$id", id, book.title, "Book", 1.8f))
+        knowledgeRepository.addNode(
+            KnowledgeNode(
+                id = "book_$id",
+                bookId = id,
+                label = book.title,
+                category = "Book",
+                size = 1.8f,
+                content = book.summaryText
+            )
+        )
         id
     }
 
@@ -60,16 +68,14 @@ class BookRepositoryImpl(
         }
 
         val seedNodes = listOf(
-            KnowledgeNode("book_1", 1, "苏格拉底的申辩", "Book", 1.8f),
-            KnowledgeNode("book_2", 2, "新工具", "Book", 1.8f),
-            KnowledgeNode("book_3", 3, "思想录", "Book", 1.8f),
-            KnowledgeNode("landmark_virtue", null, "美德即知识", "Concept", 1.4f),
-            KnowledgeNode("landmark_idols", null, "四大假象", "Concept", 1.4f),
-            KnowledgeNode("landmark_reed", null, "会思想的芦苇", "Concept", 1.4f),
-            KnowledgeNode("landmark_epistemology", null, "认识论", "Mindset", 1.6f)
+            KnowledgeNode("book_1", 1, "苏格拉底的申辩", "Book", 1.8f, content = "古希腊哲学的经典文本，记录苏格拉底在法庭上的自我辩护。"),
+            KnowledgeNode("book_2", 2, "新工具", "Book", 1.8f, content = "经验主义方法论的代表，强调通过归纳与实验重建知识。"),
+            KnowledgeNode("book_3", 3, "思想录", "Book", 1.8f, content = "关于人的脆弱、尊严、理性与信仰的深刻沉思。")
         )
         seedNodes.forEach { knowledgeRepository.addNode(it) }
 
+        // --- 只保留原著和笔记结点，去除预置的概念结点和边 ---
+        /*
         val edges = listOf(
             KnowledgeEdge("e1", 1, "book_1", "landmark_virtue", "核心主张"),
             KnowledgeEdge("e2", 2, "book_2", "landmark_idols", "批判对象"),
@@ -79,5 +85,6 @@ class BookRepositoryImpl(
             KnowledgeEdge("e19", null, "landmark_reed", "landmark_epistemology", "追问")
         )
         edges.forEach { knowledgeRepository.addEdge(it) }
+        */
     }
 }

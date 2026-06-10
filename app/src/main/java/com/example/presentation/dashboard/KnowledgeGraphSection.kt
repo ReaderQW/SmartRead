@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +33,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.IntSize
@@ -138,35 +142,36 @@ fun KnowledgeGraphView(
     val textMeasurer = rememberTextMeasurer()
     val density = LocalDensity.current
 
-    // 使用普通 List 存储物理状态，避免 StateMap 频繁重组导致的严重卡顿
-    val physicsNodes = remember { mutableListOf<PhysicsNode>() }
+    // 使用 SnapshotStateList 确保线程安全且与 Compose 快照系统集成
+    val physicsNodes = remember { mutableStateListOf<PhysicsNode>() }
     // 触发画布重绘的信号量
     var renderTrigger by remember { mutableIntStateOf(0) }
 
-    // 阶段1：初始化圆形点阵布局
-    LaunchedEffect(nodes, edges) {
-        physicsNodes.clear()
+    // 阶段1：增量同步物理节点状态
+    LaunchedEffect(nodes) {
+        // 1. 移除已删除的节点
+        val currentNodeIds = nodes.map { it.id }.toSet()
+        val toRemove = physicsNodes.filter { it.node.id !in currentNodeIds }
+        physicsNodes.removeAll(toRemove)
 
-        // 计算每个节点的度（连接数）以决定大小
+        // 2. 添加新增的节点
+        val existingNodeIds = physicsNodes.map { it.node.id }.toSet()
+        val newNodes = nodes.filter { it.id !in existingNodeIds }
+
+        // 计算连接数
         val degreeMap = mutableMapOf<String, Int>()
         edges.forEach { edge ->
             degreeMap[edge.source] = (degreeMap[edge.source] ?: 0) + 1
             degreeMap[edge.target] = (degreeMap[edge.target] ?: 0) + 1
         }
 
-        nodes.forEachIndexed { i, node ->
-            val angle = (i * 360f / nodes.size) * (Math.PI / 180f)
-            val startRadius = 600f // 初始分布半径
-
+        newNodes.forEach { node ->
             val degree = degreeMap[node.id] ?: 0
             val baseRadiusDp = when (node.category) {
                 "Book" -> 22f
-                "Concept" -> 14f
                 "Note" -> 12f
-                "Mindset" -> 16f
-                else -> 10f
+                else -> 14f
             }
-            // 节点半径：基础大小 + 连接度加成
             val radiusPx = with(density) { (baseRadiusDp + degree * 1.5f).coerceAtMost(40f).dp.toPx() }
 
             val color = when (node.category) {
@@ -177,11 +182,12 @@ fun KnowledgeGraphView(
                 else -> Color(0xFF625B71)
             }
 
+            // 新节点在中心附近随机扩散，避免重叠
             physicsNodes.add(
                 PhysicsNode(
                     node = node,
-                    x = (startRadius * cos(angle)).toFloat(),
-                    y = (startRadius * sin(angle)).toFloat(),
+                    x = (Math.random() * 200 - 100).toFloat(),
+                    y = (Math.random() * 200 - 100).toFloat(),
                     radius = radiusPx,
                     color = color
                 )
@@ -472,29 +478,145 @@ private fun LegendDot(color: Color) {
 }
 
 /**
- * 节点详情卡片。展示被点击节点的标签、分类、连接权重及思辨说明。
+ * 节点详情卡片。展示被点击节点的标签、分类、连接权重及详细内容（原文、笔记、AI分析）。
  *
  * 固定在底部居中显示，全宽半透明卡片。包含关闭按钮。
  *
- * @param node 被选中的知识节点，显示其 label、category、size 等属性
+ * @param node 被选中的知识节点
  * @param onDismiss 关闭卡片时的回调
  */
 @Composable
 private fun BoxScope.KnowledgeGraphNodeDetailCard(node: KnowledgeNode, onDismiss: () -> Unit) {
     Card(
-        modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f))
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .fillMaxWidth()
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("思想基因元：${node.label}", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Close, "关闭", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val categoryColor = when (node.category) {
+                        "Book" -> Color(0xFF6750A4)
+                        "Concept" -> Color(0xFFFFB300)
+                        "Note" -> Color(0xFFE91E63)
+                        "Mindset" -> Color(0xFF4CAF50)
+                        else -> Color(0xFF625B71)
+                    }
+                    Box(modifier = Modifier.size(10.dp).background(categoryColor, CircleShape))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "思想基因元：${node.label}",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Close, "关闭", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
+            
             Spacer(modifier = Modifier.height(8.dp))
-            Text("归属分类: ${node.category}  |  连接权重: ${(node.size * 10).toInt()}", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("在您阅读期间，AI 辅助思想基因引擎提取该原子标记，并将其锚定在自动思想基因图谱中，追踪关于本期经典的全部思辨关联。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, lineHeight = 16.sp)
+            Text(
+                text = "归属分类: ${node.category}  |  连接权重: ${(node.size * 10).toInt()}",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium
+            )
+            
+            // --- 动态展示详细内容 ---
+            
+            // 1. 书籍原文/核心内容
+            if (!node.content.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                DetailSection(title = "书籍原意 / 核心内容", icon = Icons.Default.MenuBook) {
+                    Text(
+                        text = node.content,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+            
+            // 2. 用户笔记
+            if (!node.notes.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                DetailSection(title = "我的思辨笔记", icon = Icons.Default.EditNote) {
+                    Text(
+                        text = node.notes,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+            
+            // 3. AI 深度解析
+            if (!node.aiAnalysis.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                DetailSection(
+                    title = "AI 思想基因鉴定", 
+                    icon = Icons.Default.AutoAwesome,
+                    containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.05f)
+                ) {
+                    Text(
+                        text = node.aiAnalysis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        fontStyle = FontStyle.Italic
+                    )
+                }
+            }
+            
+            // 默认说明（当没有详细内容时显示）
+            if (node.content.isNullOrBlank() && node.notes.isNullOrBlank() && node.aiAnalysis.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "在您阅读期间，AI 辅助思想基因引擎提取该原子标记，并将其锚定在自动思想基因图谱中，追踪关于本期经典的全部思辨关联。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun DetailSection(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color = Color.Transparent,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(containerColor, RoundedCornerShape(8.dp))
+            .padding(if (containerColor != Color.Transparent) 8.dp else 0.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(text = title, color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        content()
     }
 }
 

@@ -59,20 +59,22 @@ class SmartReadFloatingService : Service() {
     private fun showFloatingBall() {
         removeAllViews()
 
-        // 创建蓝色圆形悬浮球（纯色 View，无 drawable）
-        val ball = View(this).apply {
+        val ball = ImageView(this).apply {
+            setColorFilter(Color.WHITE)
+            setPadding(12, 12, 12, 12)
+
+            // 蓝色圆形背景
             background = GradientDrawable().apply {
                 setColor(0xFF4A90D9.toInt())
                 shape = GradientDrawable.OVAL
-                setStroke(dpToPx(2), Color.WHITE)
             }
         }
 
         floatingBall = ball
 
         val params = WindowManager.LayoutParams(
-            dpToPx(52),
-            dpToPx(52),
+            dpToPx(56),
+            dpToPx(56),
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
@@ -86,12 +88,7 @@ class SmartReadFloatingService : Service() {
 
         setupDrag(ball, params)
 
-        try {
-            windowManager.addView(ball, params)
-        } catch (e: Exception) {
-            android.util.Log.e("FloatingService", "addView failed", e)
-            stopSelf()
-        }
+        windowManager.addView(ball, params)
     }
 
     private var isDragging = false

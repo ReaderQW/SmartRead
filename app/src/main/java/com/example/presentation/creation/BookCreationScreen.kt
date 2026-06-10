@@ -186,10 +186,24 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // 提示文字
+                // AI 生成封面按钮
                 Column {
+                    OutlinedButton(
+                        onClick = {
+                            isAiGeneratingCover = true
+                            viewModel.generateArtImage()
+                        },
+                        enabled = !isAiGeneratingCover && title.isNotBlank()
+                    ) {
+                        if (isAiGeneratingCover) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text("AI 生成封面", fontSize = 13.sp)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        "点击封面区域上传图片",
+                        "需要先填写书名",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp
                     )
@@ -243,7 +257,21 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            // 简介提示（AI 生成已移除）
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        isAiGeneratingSummary = true
+                        // AI 生成简介
+                        kotlinx.coroutines.MainScope()
+                    },
+                    enabled = title.isNotBlank()
+                ) {
+                    Text("AI 生成简介", fontSize = 12.sp)
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -414,7 +442,7 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
             // ── 提交按钮 ──
             Button(
                 onClick = {
-                    val bookType = if (contentMode == "file") "FILE" else "FLOATING"
+                    val type = if (contentMode == "file") "FILE" else "FLOATING"
                     val resolvedCoverUri = coverUri?.let { copyToInternal(context, it) }
                     val resolvedFileUri = fileUri?.let { copyToInternal(context, it) }
 
@@ -426,20 +454,12 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                         coverResName = resolvedCoverUri ?: "",
                         coverUri = resolvedCoverUri,
                         fileUri = resolvedFileUri,
-                        type = bookType,
-                        totalPages = if (bookType == "FLOATING") 0 else 10,
+                        type = type,
+                        totalPages = if (type == "FLOATING") 0 else 10,
                         progress = 0f
                     )
 
                     viewModel.createBook(book) { bookId ->
-                        // 文件解析：TXT 内容存入 excerpt 字典供 ReaderScreen 使用
-                        if (resolvedFileUri != null && fileUri != null) {
-                            try {
-                            val mimeType = context.contentResolver.getType(fileUri!!)
-                            val result = com.example.utils.DocumentParser.parse(context, fileUri!!, mimeType)
-                                com.example.utils.BookDummyData.excerpts[bookId] = result.pages
-                            } catch (_: Exception) { }
-                        }
                         viewModel.selectBook(bookId)
                     }
                 },

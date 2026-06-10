@@ -76,7 +76,10 @@ data class KnowledgeNode(
     val bookId: Int? = null,
     val label: String,
     val category: String,
-    val size: Float = 1.0f
+    val size: Float = 1.0f,
+    val content: String? = null,        // 原始内容（如原文）
+    val notes: String? = null,          // 用户笔记
+    val aiAnalysis: String? = null      // AI 深度解析
 )
 
 data class KnowledgeEdge(

@@ -21,12 +21,10 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -75,8 +73,7 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     var activeTab by remember { mutableIntStateOf(0) }
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
-    var selectionMode by remember { mutableStateOf(false) }
-    var selectedBookIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var selectedNoteBookId by remember { mutableStateOf<Int?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -88,51 +85,10 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
             )
         },
         bottomBar = {
-            Column {
-                if (selectionMode) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "已选 ${selectedBookIds.size} 本",
-                            color = MaterialTheme.colorScheme.primary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Row {
-                            TextButton(onClick = {
-                                selectedBookIds.mapNotNull { id -> books.find { it.id == id } }
-                                    .forEach { viewModel.deleteBook(it) }
-                                selectedBookIds = emptySet()
-                                selectionMode = false
-                            }) {
-                                androidx.compose.material3.Icon(
-                                    Icons.Default.Delete, null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("删除", color = MaterialTheme.colorScheme.error, fontSize = 14.sp)
-                            }
-                            TextButton(onClick = {
-                                selectedBookIds = emptySet()
-                                selectionMode = false
-                            }) {
-                                Text("取消", fontSize = 14.sp)
-                            }
-                        }
-                    }
-                }
-                DashboardBottomBar(
-                    activeTab = activeTab,
-                    onTabSelected = { activeTab = it }
-                )
-            }
+            DashboardBottomBar(
+                activeTab = activeTab,
+                onTabSelected = { activeTab = it }
+            )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -142,34 +98,23 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                 .padding(paddingValues)
         ) {
             when (activeTab) {
-                0 -> {
-                    val filteredBooks = books.filter {
+                0 -> BookShelfView(
+                    books = books.filter {
                         it.title.contains(searchQuery, true) ||
                             it.author.contains(searchQuery, true)
-                    }
-                    BookShelfView(
-                        books = filteredBooks,
-                        onBookClick = { viewModel.selectBook(it.id) },
-                        onAddBookClick = { viewModel.startCreatingBook() },
-                        onDeleteBook = { viewModel.deleteBook(it) },
-                        selectionMode = selectionMode,
-                        selectedBooks = selectedBookIds,
-                        onToggleSelection = { book ->
-                            selectedBookIds = if (book.id in selectedBookIds)
-                                selectedBookIds - book.id else selectedBookIds + book.id
-                        },
-                        onEnterSelection = { book ->
-                            selectionMode = true
-                            selectedBookIds = selectedBookIds + book.id
-                        }
-                    )
-                }
+                    },
+                    onBookClick = { viewModel.selectBook(it.id) },
+                    onAddClick = { viewModel.startCreatingBook() }
+                )
                 1 -> NotesListView(
                     notes = notes.filter {
                         it.userNote.contains(searchQuery, true) ||
                             it.originalText.contains(searchQuery, true) ||
                             it.tags.contains(searchQuery, true)
                     },
+                    books = books,
+                    selectedBookId = selectedNoteBookId,
+                    onSelectBook = { selectedNoteBookId = it },
                     onDelete = { viewModel.deleteNote(it) }
                 )
                 2 -> KnowledgeGraphView(

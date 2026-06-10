@@ -149,12 +149,29 @@ class FileDataSource(private val context: Context) {
 
     // ── Knowledge CRUD ──
     fun addNode(node: KnowledgeNode) {
-        _knowledgeNodes.value = _knowledgeNodes.value + node
+        val list = _knowledgeNodes.value.toMutableList()
+        // 去重：如果 ID 已存在则替换（防止重复点击或逻辑冲突产生重复结点）
+        list.removeAll { it.id == node.id }
+        list.add(node)
+        _knowledgeNodes.value = list
         saveKnowledgeNodes()
     }
 
     fun addEdge(edge: KnowledgeEdge) {
-        _knowledgeEdges.value = _knowledgeEdges.value + edge
+        val list = _knowledgeEdges.value.toMutableList()
+        list.removeAll { it.id == edge.id }
+        list.add(edge)
+        _knowledgeEdges.value = list
+        saveKnowledgeEdges()
+    }
+
+    fun deleteNode(nodeId: String) {
+        _knowledgeNodes.value = _knowledgeNodes.value.filter { it.id != nodeId }
+        saveKnowledgeNodes()
+    }
+
+    fun deleteEdgesForNode(nodeId: String) {
+        _knowledgeEdges.value = _knowledgeEdges.value.filter { it.source != nodeId && it.target != nodeId }
         saveKnowledgeEdges()
     }
 
@@ -194,8 +211,17 @@ class FileDataSource(private val context: Context) {
         _highlights.value = readJsonList("highlights.json") { it.toHighlight() }
         _notes.value = readJsonList("notes.json") { it.toNote() }
         _chatMessages.value = readJsonList("chat_messages.json") { it.toChatMessage() }
-        _knowledgeNodes.value = readJsonList("knowledge_nodes.json") { it.toNode() }
-        _knowledgeEdges.value = readJsonList("knowledge_edges.json") { it.toEdge() }
+        
+        // 加载图谱结点：保留所有分类（Book/Note/Concept/Mindset），去重
+        val rawNodes = readJsonList("knowledge_nodes.json") { it.toNode() }
+        val filteredNodes = rawNodes
+            .distinctBy { it.id }
+        _knowledgeNodes.value = filteredNodes
+
+        val allEdges = readJsonList("knowledge_edges.json") { it.toEdge() }
+        val nodeIds = filteredNodes.map { it.id }.toSet()
+        _knowledgeEdges.value = allEdges.filter { it.source in nodeIds && it.target in nodeIds }
+
         _readingReports.value = readJsonList("reading_reports.json") { it.toReport() }
     }
 
@@ -392,7 +418,10 @@ class FileDataSource(private val context: Context) {
         bookId = if (has("bookId") && !isNull("bookId")) optInt("bookId") else null,
         label = optString("label"),
         category = optString("category"),
-        size = optDouble("size", 1.0).toFloat()
+        size = optDouble("size", 1.0).toFloat(),
+        content = if (has("content")) optString("content") else null,
+        notes = if (has("notes")) optString("notes") else null,
+        aiAnalysis = if (has("aiAnalysis")) optString("aiAnalysis") else null
     )
     private fun KnowledgeNode.toJson() = JSONObject().apply {
         put("id", id)
@@ -400,6 +429,9 @@ class FileDataSource(private val context: Context) {
         put("label", label)
         put("category", category)
         put("size", size.toDouble())
+        content?.let { put("content", it) }
+        notes?.let { put("notes", it) }
+        aiAnalysis?.let { put("aiAnalysis", it) }
     }
 
     private fun JSONObject.toEdge() = KnowledgeEdge(

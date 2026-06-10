@@ -4,5 +4,37 @@
   { "id": "e3", "bookId": 3, "source": "book_3", "target": "landmark_reed", "relation": "存在隐喻" },
   { "id": "e17", "bookId": null, "source": "landmark_virtue", "target": "landmark_epistemology", "relation": "导向" },
   { "id": "e18", "bookId": null, "source": "landmark_idols", "target": "landmark_epistemology", "relation": "属于" },
-  { "id": "e19", "bookId": null, "source": "landmark_reed", "target": "landmark_epistemology", "relation": "追问" }
+  { "id": "e19", "bookId": null, "source": "landmark_reed", "target": "landmark_epistemology", "relation": "追问" },
+  { "id": "contrast_cross", "bookId": null, "source": "note_4", "target": "note_7", "relation": "方法论投影：实证归纳 vs 几何演绎", "weight": 2.2 },
+  { "id": "cross_awaken_intuit", "bookId": null, "source": "note_3", "target": "note_8", "relation": "唤醒与直觉：刺痛灵魂 vs 一瞥洞见", "weight": 2.0 },
+  { "id": "cross_link_1", "bookId": null, "source": "note_1", "target": "note_4", "relation": "思想演进：从无知到工具", "weight": 1.5 },
+
+  { "id": "cross_socrates_pascal_1", "bookId": null, "source": "note_1", "target": "note_6", "relation": "人的有限性：无知与芦苇的共鸣", "weight": 1.8 },
+  { "id": "cross_socrates_pascal_2", "bookId": null, "source": "note_2", "target": "note_6", "relation": "省察即尊严：自觉的生命高于一切", "weight": 1.6 },
+  { "id": "cross_bacon_pascal_1", "bookId": null, "source": "note_5", "target": "note_8", "relation": "破除幻象：偶像批判与敏感精神的直觉洞见", "weight": 1.7 },
+  { "id": "cross_bacon_pascal_2", "bookId": null, "source": "note_4", "target": "note_6", "relation": "经验与脆弱：归纳法如何安放人的尊严", "weight": 1.3 },
+  { "id": "cross_socrates_bacon_1", "bookId": null, "source": "note_3", "target": "note_5", "relation": "唤醒与祛魅：牛虻精神与偶像破除", "weight": 1.9 },
+  { "id": "cross_socrates_bacon_2", "bookId": null, "source": "note_2", "target": "note_4", "relation": "省察即方法：生命追问与经验归纳的对话", "weight": 1.4 },
+
+  { "id": "c1", "bookId": null, "source": "note_1", "target": "concept_epistemic_humility", "relation": "奠基", "weight": 2.0 },
+  { "id": "c2", "bookId": null, "source": "note_3", "target": "concept_critical_thinking", "relation": "精神源头", "weight": 2.2 },
+  { "id": "c3", "bookId": null, "source": "note_4", "target": "concept_empiricism", "relation": "方法论基础", "weight": 2.0 },
+  { "id": "c4", "bookId": null, "source": "note_7", "target": "concept_rationalism", "relation": "逻辑典范", "weight": 1.8 },
+  { "id": "c5", "bookId": null, "source": "note_8", "target": "concept_dialectic", "relation": "直觉辩证", "weight": 1.5 },
+  { "id": "c6", "bookId": null, "source": "note_6", "target": "concept_human_dignity", "relation": "哲学基石", "weight": 1.8 },
+  { "id": "c7", "bookId": null, "source": "note_5", "target": "concept_critical_thinking", "relation": "批判对象", "weight": 1.6 },
+  { "id": "c8", "bookId": null, "source": "note_2", "target": "concept_epistemic_humility", "relation": "实践路径", "weight": 1.5 },
+  { "id": "c9", "bookId": null, "source": "concept_epistemic_humility", "target": "concept_critical_thinking", "relation": "前提条件", "weight": 1.6 },
+  { "id": "c10", "bookId": null, "source": "concept_empiricism", "target": "concept_rationalism", "relation": "认识论双翼", "weight": 1.7 },
+  { "id": "c11", "bookId": null, "source": "concept_dialectic", "target": "concept_critical_thinking", "relation": "核心方法", "weight": 1.5 },
+  { "id": "c12", "bookId": null, "source": "concept_human_dignity", "target": "concept_epistemic_humility", "relation": "价值根基", "weight": 1.4 },
+
+  { "id": "m1", "bookId": null, "source": "book_1", "target": "mindset_western_philosophy", "relation": "奠基之作", "weight": 2.0 },
+  { "id": "m2", "bookId": null, "source": "book_2", "target": "mindset_scientific_revolution", "relation": "科学宣言", "weight": 2.0 },
+  { "id": "m3", "bookId": null, "source": "book_3", "target": "mindset_existential_reflection", "relation": "存在先声", "weight": 2.0 },
+  { "id": "m4", "bookId": null, "source": "concept_critical_thinking", "target": "mindset_western_philosophy", "relation": "核心基因", "weight": 1.8 },
+  { "id": "m5", "bookId": null, "source": "concept_empiricism", "target": "mindset_scientific_revolution", "relation": "认识论引擎", "weight": 1.7 },
+  { "id": "m6", "bookId": null, "source": "concept_human_dignity", "target": "mindset_existential_reflection", "relation": "价值内核", "weight": 1.6 },
+  { "id": "m7", "bookId": null, "source": "mindset_western_philosophy", "target": "mindset_scientific_revolution", "relation": "思想演进", "weight": 1.5 },
+  { "id": "m8", "bookId": null, "source": "mindset_existential_reflection", "target": "mindset_western_philosophy", "relation": "人文转向", "weight": 1.4 }
 ]

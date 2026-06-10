@@ -197,7 +197,6 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FloatingBookReaderView(activeBook: Book, notes: List<Note>, viewModel: SmartReadViewModel) {
-    val context = LocalContext.current
     val isFloatingAssistantOpen by viewModel.isFloatingAssistantOpen.collectAsStateWithLifecycle()
     val isAiLoading by viewModel.isAiLoading.collectAsStateWithLifecycle()
     val activeReport by viewModel.activeReport.collectAsStateWithLifecycle()
@@ -230,20 +229,20 @@ fun FloatingBookReaderView(activeBook: Book, notes: List<Note>, viewModel: Smart
                     Icon(Icons.Default.Image, null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(48.dp))
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Text(activeBook.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                Text(activeBook.author, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                Text(activeBook.title, fontSize = 22.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Serif, color = MaterialTheme.colorScheme.onSurface)
+                Text(activeBook.author, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(32.dp))
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📖", fontSize = 40.sp, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                        Text("📖", fontSize = 40.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("已存入", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                        Text("${notes.size}", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Serif, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
-                        Text("张思绪卡片", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+                        Text("已存入", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("${notes.size}", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Serif)
+                        Text("张思绪卡片", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Card(modifier = Modifier.fillMaxWidth().height(56.dp).clickable { viewModel.startFloatingService(context) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) {
+                Card(modifier = Modifier.fillMaxWidth().height(56.dp).clickable { viewModel.setFloatingServiceActive(true) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) {
                     Row(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                         Icon(Icons.Default.OpenInNew, null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))

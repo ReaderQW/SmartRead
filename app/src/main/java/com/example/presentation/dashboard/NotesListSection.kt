@@ -3,6 +3,7 @@ package com.example.presentation.dashboard
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +17,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,33 +49,92 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.domain.model.Book
 import com.example.domain.model.Note
 import com.example.ui.components.EmptyStateView
 
 /**
  * 笔记列表主视图入口
  *
- * 根据笔记列表是否为空，显示不同的界面状态：
- * - 空列表：显示空状态提示
- * - 非空列表：显示笔记卡片列表
+ * 根据 selectedBookId 是否为空，显示不同的界面：
+ * - 为空：显示书籍分类列表
+ * - 不为空：显示该书籍下的思绪卡片
  *
  * @param notes 笔记数据列表
- * @param onDelete 删除笔记的回调函数，参数为要删除的笔记对象
+ * @param books 书籍数据列表
+ * @param selectedBookId 当前选中的书籍 ID（用于笔记分类显示）
+ * @param onSelectBook 选中书籍的回调
+ * @param onDelete 删除笔记的回调
  */
 @Composable
-fun NotesListView(notes: List<Note>, onDelete: (Note) -> Unit) {
-    if (notes.isEmpty()) {
-        NotesEmptyState()
+fun NotesListView(
+    notes: List<Note>,
+    books: List<Book>,
+    selectedBookId: Int?,
+    onSelectBook: (Int?) -> Unit,
+    onDelete: (Note) -> Unit
+) {
+    if (selectedBookId == null) {
+        NotesBookClassification(notes, books, onSelectBook)
     } else {
-        NotesListContent(notes = notes, onDelete = onDelete)
+        val book = books.find { it.id == selectedBookId }
+        val bookNotes = notes.filter { it.bookId == selectedBookId }
+        NotesListContent(
+            bookTitle = book?.title ?: "未知书籍",
+            notes = bookNotes,
+            onBack = { onSelectBook(null) },
+            onDelete = onDelete
+        )
+    }
+}
+
+/**
+ * 思想档案首页：按书籍分类显示
+ */
+@Composable
+private fun NotesBookClassification(
+    notes: List<Note>,
+    books: List<Book>,
+    onSelectBook: (Int?) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        item {
+            Text(
+                text = "思存档案 Thought Archives",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif
+            )
+            Text(
+                text = "按书籍归纳的思想基因元。点击书籍进入查看对应的思绪卡片。",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(bottom = 20.dp)
+            )
+        }
+
+        val booksWithNotes = books.filter { book -> notes.any { it.bookId == book.id } }
+
+        if (booksWithNotes.isEmpty()) {
+            item {
+                NotesEmptyState()
+            }
+        } else {
+            items(booksWithNotes) { book ->
+                val count = notes.count { it.bookId == book.id }
+                BookNoteFolderCard(book, count, onClick = { onSelectBook(book.id) })
+            }
+        }
     }
 }
 
 /**
  * 笔记列表空状态视图
- *
- * 当用户尚未创建任何笔记时显示的提示界面，
- * 包含图标、标题和引导性副标题。
  */
 @Composable
 private fun NotesEmptyState() {
@@ -79,41 +146,104 @@ private fun NotesEmptyState() {
 }
 
 /**
- * 笔记列表内容区域
- *
- * 使用 LazyColumn 展示可滚动的笔记卡片列表，
- * 包含列表头部标题和说明文字。
- *
- * @param notes 笔记数据列表（非空）
- * @param onDelete 删除笔记的回调函数，参数为要删除的笔记对象
+ * 书籍笔记文件夹卡片
  */
 @Composable
-private fun NotesListContent(notes: List<Note>, onDelete: (Note) -> Unit) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-
-    LazyColumn(
+private fun BookNoteFolderCard(book: Book, noteCount: Int, onClick: () -> Unit) {
+    Card(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        item {
-            Text(
-                text = "思绪卡片 Notebook Archives",
-                color = MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Serif
-            )
-            Text(
-                text = "在此可以回溯您摘录的黄金概念句，与您当时所作思考。AI智慧洞察亦将实时陪伴。",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 16.dp)
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(12.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.MenuBook,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = book.title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${book.author} · ${noteCount}条思绪卡片",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp
+                )
+            }
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.size(14.dp)
             )
         }
+    }
+}
 
-        items(notes) { note ->
-            NoteCard(note = note, primaryColor = primaryColor, onDelete = onDelete)
+/**
+ * 笔记列表内容区域
+ */
+@Composable
+private fun NotesListContent(
+    bookTitle: String,
+    notes: List<Note>,
+    onBack: () -> Unit,
+    onDelete: (Note) -> Unit
+) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = bookTitle,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "思绪卡片 · 共 ${notes.size} 条",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+        }
+
+        if (notes.isEmpty()) {
+            NotesEmptyState()
+        } else {
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(notes) { note ->
+                    NoteCard(note = note, primaryColor = primaryColor, onDelete = onDelete)
+                }
+            }
         }
     }
 }
