@@ -41,7 +41,16 @@ class ReaderRepositoryImpl(
         ).toInt()
         val nodeId = "hl_$id"
         val concept = if (text.length > 8) text.take(8) + "..." else text
-        knowledgeRepository.addNode(KnowledgeNode(nodeId, bookId, concept, "Note", 1.2f))
+        knowledgeRepository.addNode(
+            KnowledgeNode(
+                id = nodeId,
+                bookId = bookId,
+                label = concept,
+                category = "Note",
+                size = 1.2f,
+                content = text
+            )
+        )
         knowledgeRepository.addEdge(KnowledgeEdge("edge_book_${bookId}_$nodeId", bookId, "book_$bookId", nodeId, "高亮"))
         knowledgeRepository.indexText(bookId, "HIGHLIGHT", id.toString(), text)
         id.toLong()
@@ -54,6 +63,11 @@ class ReaderRepositoryImpl(
     }
 
     override suspend fun deleteHighlight(highlight: Highlight) = withContext(Dispatchers.IO) {
+        val nodeId = "hl_${highlight.id}"
+        // 删除高亮时同步删除对应的知识图谱节点和关联边
+        knowledgeRepository.deleteNode(nodeId)
+        knowledgeRepository.deleteEdgesForNode(nodeId)
         fileDataSource.deleteHighlight(highlight)
     }
+
 }

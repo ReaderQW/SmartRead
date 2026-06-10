@@ -57,6 +57,8 @@ interface KnowledgeRepository {
     val allEdges: Flow<List<KnowledgeEdge>>
     suspend fun addNode(node: KnowledgeNode)
     suspend fun addEdge(edge: KnowledgeEdge)
+    suspend fun deleteNode(nodeId: String)
+    suspend fun deleteEdgesForNode(nodeId: String)
     suspend fun indexText(bookId: Int, sourceType: String, sourceId: String, text: String)
     suspend fun searchSimilar(bookId: Int, text: String, limit: Int = 5): List<KnowledgeSnippet>
 }

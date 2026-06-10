@@ -68,6 +68,7 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     val notes by viewModel.allNotes.collectAsStateWithLifecycle()
     val nodes by viewModel.knowledgeNodes.collectAsStateWithLifecycle()
     val edges by viewModel.knowledgeEdges.collectAsStateWithLifecycle()
+    val selectedBookIdInNotes by viewModel.selectedBookIdInNotes.collectAsStateWithLifecycle()
     val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()
 
     var activeTab by remember { mutableIntStateOf(0) }
@@ -102,7 +103,8 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                         it.title.contains(searchQuery, true) ||
                             it.author.contains(searchQuery, true)
                     },
-                    onBookClick = { viewModel.selectBook(it.id) }
+                    onBookClick = { viewModel.selectBook(it.id) },
+                    onUpdateCover = { bookId, uri -> viewModel.updateBookCover(bookId, uri) }
                 )
                 1 -> NotesListView(
                     notes = notes.filter {
@@ -110,6 +112,9 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                             it.originalText.contains(searchQuery, true) ||
                             it.tags.contains(searchQuery, true)
                     },
+                    books = books,
+                    selectedBookId = selectedBookIdInNotes,
+                    onSelectBook = { viewModel.selectBookInNotes(it) },
                     onDelete = { viewModel.deleteNote(it) }
                 )
                 2 -> KnowledgeGraphView(

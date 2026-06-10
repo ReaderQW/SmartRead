@@ -1,8 +1,13 @@
 package com.example.presentation.dashboard
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
@@ -32,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.domain.model.Book
 import com.example.ui.components.EmptyStateView
 
@@ -52,11 +60,15 @@ import com.example.ui.components.EmptyStateView
  * @param onBookClick 点击某本图书时的回调，参数为被点击的 [Book]
  */
 @Composable
-fun BookShelfView(books: List<Book>, onBookClick: (Book) -> Unit) {
+fun BookShelfView(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onUpdateCover: (Int, android.net.Uri) -> Unit = { _, _ -> }
+) {
     if (books.isEmpty()) {
         BookShelfEmptyState()
     } else {
-        BookShelfListContent(books = books, onBookClick = onBookClick)
+        BookShelfListContent(books = books, onBookClick = onBookClick, onUpdateCover = onUpdateCover)
     }
 }
 
@@ -79,13 +91,18 @@ private fun BookShelfEmptyState() {
  * @param onBookClick 点击某本图书时的回调
  */
 @Composable
-private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit) {
+private fun BookShelfListContent(
+    books: List<Book>,
+    onBookClick: (Book) -> Unit,
+    onUpdateCover: (Int, android.net.Uri) -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        // ... (title text remains same)
         Text(
             text = "藏书阁 Exquisite Bookshelf",
             color = MaterialTheme.colorScheme.onSurface,
@@ -94,14 +111,14 @@ private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit)
             fontFamily = FontFamily.Serif
         )
         Text(
-            text = "点击经典，即可进入智能高亮、OCR截图与苏格拉底提问伴阅空间。",
+            text = "点击经典，即可进入智能高亮、OCR截图与苏格拉底提问伴阅空间。长按封面可上传图片。",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
         books.forEach { book ->
-            BookCard(book = book, onClick = { onBookClick(book) })
+            BookCard(book = book, onClick = { onBookClick(book) }, onUpdateCover = onUpdateCover)
         }
     }
 }
@@ -112,8 +129,17 @@ private fun BookShelfListContent(books: List<Book>, onBookClick: (Book) -> Unit)
  * @param book 要展示的图书数据
  * @param onClick 点击卡片时的回调
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookCard(book: Book, onClick: () -> Unit) {
+private fun BookCard(book: Book, onClick: () -> Unit, onUpdateCover: (Int, android.net.Uri) -> Unit) {
+    val pickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            onUpdateCover(book.id, uri)
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,8 +155,13 @@ private fun BookCard(book: Book, onClick: () -> Unit) {
                 .padding(16.dp)
                 .fillMaxWidth()
         ) {
-            // Styled Book Cover Mockup
-            BookCover(book = book)
+            // Styled Book Cover
+            BookCover(
+                book = book,
+                onLongClick = {
+                    pickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -146,8 +177,9 @@ private fun BookCard(book: Book, onClick: () -> Unit) {
  *
  * @param book 用于获取标题和 id 以决定颜色方案的图书数据
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BookCover(book: Book) {
+private fun BookCover(book: Book, onLongClick: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .size(width = 85.dp, height = 115.dp)
@@ -170,26 +202,55 @@ private fun BookCover(book: Book) {
                     }
                 )
             )
-            .padding(6.dp),
+            .combinedClickable(
+                onClick = {}, // Normal click handled by parent Card
+                onLongClick = onLongClick
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.Book,
-                contentDescription = "Book icon",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
+        if (!book.coverUri.isNullOrEmpty()) {
+            AsyncImage(
+                model = book.coverUri,
+                contentDescription = "Book cover",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = book.title,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.Book,
+                    contentDescription = "Book icon",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = book.title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // Overlay hints for long press if no cover
+        if (book.coverUri.isNullOrEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(4.dp),
+                contentAlignment = Alignment.BottomEnd
+            ) {
+                Icon(
+                    Icons.Default.AddPhotoAlternate,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }
@@ -292,7 +353,8 @@ private fun BookCardPreview() {
                 coverResName = "",
                 type = "DEMO_TEXT"
             ),
-            onClick = {}
+            onClick = {},
+            onUpdateCover = { _, _ -> }
         )
     }
 }

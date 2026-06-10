@@ -58,7 +58,21 @@ class AigcRemoteDataSource(
             .replace(".", "")
             .trim()
 
+    /**
+     * 自动提取中文主旨命名（用于知识图谱节点标签）
+     * 返回简洁的 4-8 字中文主旨名称
+     */
+    suspend fun extractChineseTitle(originalText: String, userNote: String): String {
+        val raw = generate(
+            prompt = Prompts.chineseTitlePrompt(originalText, userNote),
+            systemPrompt = Prompts.chineseTitleSystemPrompt
+        )
+        val cleaned = raw.trim().replace("\"", "").replace("。", "").replace("\n", "")
+        return if (cleaned.isBlank() || cleaned.length > 20) "思想切片" else cleaned
+    }
+
     suspend fun inferRelationships(currentNote: String, recentNotes: List<String>): List<JSONObject> {
+
         val raw = generate(
             prompt = Prompts.inferRelationshipsPrompt(currentNote, recentNotes),
             systemPrompt = Prompts.inferRelationshipsSystemPrompt
@@ -204,8 +218,15 @@ object Prompts {
     fun noteTagsPrompt(originalText: String, userNote: String) =
         "根据以下原文和笔记生成 2 个简短标签，用英文逗号分隔，只返回标签：\n$originalText\n$userNote"
 
+    const val chineseTitleSystemPrompt =
+        "你是一个中文主旨提炼专家。你的任务是根据原文摘录和读者感悟，提炼出一个 4-8 个汉字的简洁主旨名称，用于知识图谱节点标签。要求：精准概括核心思想、使用中文、不包含标点符号、不包含'感悟''笔记''思考'等冗余词。"
+
+    fun chineseTitlePrompt(originalText: String, userNote: String) =
+        "原文摘录：\"$originalText\"\n读者感悟：\"$userNote\"\n\n请提炼一个 4-8 个汉字的简洁主旨名称（只返回名称本身，不要任何解释）："
+
     const val inferRelationshipsSystemPrompt =
         "你是一个知识图谱专家。你的任务是分析当前笔记与之前笔记之间的潜在联系，并以 JSON 数组格式返回这些联系。每个联系应包含 'target' (目标笔记的简短描述) 和 'type' (关系类型，如 '补充'、'矛盾'、'因果'、'延伸'等)。"
+
 
     fun inferRelationshipsPrompt(currentNote: String, recentNotes: List<String>) = """
         当前笔记：

@@ -26,6 +26,14 @@ class KnowledgeRepositoryImpl(
         fileDataSource.addEdge(edge)
     }
 
+    override suspend fun deleteNode(nodeId: String) = withContext(Dispatchers.IO) {
+        fileDataSource.deleteNode(nodeId)
+    }
+
+    override suspend fun deleteEdgesForNode(nodeId: String) = withContext(Dispatchers.IO) {
+        fileDataSource.deleteEdgesForNode(nodeId)
+    }
+
     override suspend fun indexText(bookId: Int, sourceType: String, sourceId: String, text: String) = withContext(Dispatchers.IO) {
         vectorStore.indexText(bookId, sourceType, sourceId, text)
     }

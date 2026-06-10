@@ -7,8 +7,11 @@ import com.example.domain.model.KnowledgeNode
 import com.example.domain.model.Note
 import com.example.domain.repository.KnowledgeRepository
 import com.example.domain.repository.NoteRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -23,10 +26,17 @@ class NoteRepositoryImpl(
         fileDataSource.observeNotesForBook(bookId)
 
     override suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String): Note = withContext(Dispatchers.IO) {
-        val aiSummary = aigc.noteInsight(originalText, userNote)
-        val tagsResponse = aigc.noteTags(originalText, userNote)
-        val cleanTags = if (tagsResponse.contains("Error") || tagsResponse.contains("Failure")) {
-            "阅读笔记,反思"
+        // 1. 并行获取 AI 洞察、标签和中文主旨命名（减少串行等待时间）
+        val aiSummaryDeferred = async { aigc.noteInsight(originalText, userNote) }
+        val tagsResponseDeferred = async { aigc.noteTags(originalText, userNote) }
+        val chineseTitleDeferred = async { aigc.extractChineseTitle(originalText, userNote) }
+
+        val aiSummary = aiSummaryDeferred.await()
+        val tagsResponse = tagsResponseDeferred.await()
+        val chineseTitle = chineseTitleDeferred.await()
+
+        val cleanTags = if (tagsResponse.isBlank() || tagsResponse.contains("Error") || tagsResponse.contains("Failure")) {
+            "深度思考, 观点归档"
         } else {
             tagsResponse
         }
@@ -41,36 +51,62 @@ class NoteRepositoryImpl(
         val id = fileDataSource.addNote(note).toInt()
         val saved = note.copy(id = id)
 
+        // 2. 同步到知识图谱，使用 AI 自动提取的中文主旨作为节点标签（禁用"感悟 #ID"格式）
         val noteNodeId = "note_$id"
-        knowledgeRepository.addNode(KnowledgeNode(noteNodeId, bookId, "感悟#$id", "Note", 1.1f))
-        knowledgeRepository.addEdge(KnowledgeEdge("edge_note_$id", bookId, "book_$bookId", noteNodeId, "撰写"))
+        val nodeLabel = chineseTitle.ifBlank { "思想切片" }
 
-        cleanTags.split(",").map { it.trim() }.filter { it.isNotEmpty() }.forEach { tag ->
-            val tagNodeId = "tag_$tag"
-            knowledgeRepository.addNode(KnowledgeNode(tagNodeId, bookId, tag, "Mindset", 1.3f))
-            knowledgeRepository.addEdge(KnowledgeEdge("edge_tag_${id}_$tag", bookId, noteNodeId, tagNodeId, "属于"))
-        }
+        knowledgeRepository.addNode(
+            KnowledgeNode(
+                id = noteNodeId,
+                bookId = bookId,
+                label = nodeLabel,
+                category = "Note",
+                size = 1.2f,
+                content = originalText,
+                notes = userNote,
+                aiAnalysis = aiSummary
+            )
+        )
+        knowledgeRepository.addEdge(KnowledgeEdge("edge_note_$id", bookId, "book_$bookId", noteNodeId, "观点归档", 1.0f))
 
-        try {
-            val existingNotes = fileDataSource.getNotesForBook(bookId)
-            val recentNoteStrings = existingNotes
-                .filter { it.id != saved.id }
-                .take(10)
-                .map { "${it.originalText} -> ${it.userNote}" }
+        // 3. 异步推理与其他笔记的关联（非阻塞，不等待结果）
+        // 使用 IO 协程池启动后台任务，不阻塞当前保存流程
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val existingNotes = fileDataSource.getNotesForBook(bookId)
+                val recentNotePairs = existingNotes
+                    .filter { it.id != saved.id }
+                    .take(5)
+                    .map { note ->
+                        Pair("note_${note.id}", "${note.originalText} -> ${note.userNote}")
+                    }
 
-            if (recentNoteStrings.isNotEmpty()) {
-                val relationships = aigc.inferRelationships("$originalText -> $userNote", recentNoteStrings)
-                relationships.forEachIndexed { index, rel: JSONObject ->
-                    val targetLabel = rel.optString("target")
-                    val type = rel.optString("type")
-                    val edgeId = "ai_edge_${saved.id}_$index"
-                    knowledgeRepository.addEdge(
-                        KnowledgeEdge(edgeId, bookId, noteNodeId, "book_$bookId", "$type: $targetLabel")
-                    )
+                if (recentNotePairs.isNotEmpty()) {
+                    val recentNoteStrings = recentNotePairs.map { it.second }
+                    val relationships = aigc.inferRelationships("$originalText -> $userNote", recentNoteStrings)
+                    relationships.forEachIndexed { index, rel: JSONObject ->
+                        val targetLabel = rel.optString("target")
+                        val type = rel.optString("type")
+                        val edgeId = "ai_edge_${saved.id}_$index"
+
+                        val targetNodeId = recentNotePairs.firstOrNull { pair ->
+                            pair.second.contains(targetLabel.take(20))
+                        }?.first
+
+                        if (targetNodeId != null) {
+                            knowledgeRepository.addEdge(
+                                KnowledgeEdge(edgeId, bookId, noteNodeId, targetNodeId, type, 1.2f)
+                            )
+                        } else {
+                            knowledgeRepository.addEdge(
+                                KnowledgeEdge(edgeId, bookId, noteNodeId, "book_$bookId", "$type: $targetLabel", 0.8f)
+                            )
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                android.util.Log.e("NoteRepository", "Relationship inference failed", e)
             }
-        } catch (_: Exception) {
-            // AI 推理失败不影响主流程
         }
 
         knowledgeRepository.indexText(bookId, "NOTE", id.toString(), "$originalText\n$userNote\n$aiSummary")
@@ -78,6 +114,10 @@ class NoteRepositoryImpl(
     }
 
     override suspend fun deleteNote(note: Note) = withContext(Dispatchers.IO) {
+        val nodeId = "note_${note.id}"
+        // 删除笔记时，同步删除图谱中的结点和关联边
+        knowledgeRepository.deleteNode(nodeId)
+        knowledgeRepository.deleteEdgesForNode(nodeId)
         fileDataSource.deleteNote(note)
     }
 }
