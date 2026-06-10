@@ -1,6 +1,8 @@
 package com.example.data.local
 
 import android.content.Context
+import android.os.Environment
+import com.example.BuildConfig
 import com.example.domain.model.Book
 import com.example.domain.model.ChatMessage
 import com.example.domain.model.DialogueFrequency
@@ -30,6 +32,10 @@ class FileDataSource(private val context: Context) {
 
     private val dataDir: File
         get() = File(context.filesDir, "data").also { it.mkdirs() }
+
+    /** Debug 模式下用于导出数据的目录（可通过 adb pull 访问） */
+    private val syncDir: File
+        get() = File(context.getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS), "SmartRead").also { it.mkdirs() }
 
     // ── 数据缓存（替代 Room Flow） ──
     private val _books = MutableStateFlow<List<Book>>(emptyList())
@@ -214,13 +220,13 @@ class FileDataSource(private val context: Context) {
         _readingReports.value = readJsonList("reading_reports.json") { it.toReport() }
     }
 
-    private fun saveBooks() = writeJsonFile("books.json", _books.value)
-    private fun saveHighlights() = writeJsonFile("highlights.json", _highlights.value)
-    private fun saveNotes() = writeJsonFile("notes.json", _notes.value)
-    private fun saveChatMessages() = writeJsonFile("chat_messages.json", _chatMessages.value)
-    private fun saveKnowledgeNodes() = writeJsonFile("knowledge_nodes.json", _knowledgeNodes.value)
-    private fun saveKnowledgeEdges() = writeJsonFile("knowledge_edges.json", _knowledgeEdges.value)
-    private fun saveReadingReports() = writeJsonFile("reading_reports.json", _readingReports.value)
+    private fun saveBooks() = writeJsonAndSync("books.json", _books.value)
+    private fun saveHighlights() = writeJsonAndSync("highlights.json", _highlights.value)
+    private fun saveNotes() = writeJsonAndSync("notes.json", _notes.value)
+    private fun saveChatMessages() = writeJsonAndSync("chat_messages.json", _chatMessages.value)
+    private fun saveKnowledgeNodes() = writeJsonAndSync("knowledge_nodes.json", _knowledgeNodes.value)
+    private fun saveKnowledgeEdges() = writeJsonAndSync("knowledge_edges.json", _knowledgeEdges.value)
+    private fun saveReadingReports() = writeJsonAndSync("reading_reports.json", _readingReports.value)
 
     private fun copySeedFromAssets() {
         listOf(
@@ -253,6 +259,37 @@ class FileDataSource(private val context: Context) {
         } catch (e: Exception) {
             android.util.Log.e("FileDataSource", "Error reading $fileName", e)
             emptyList()
+        }
+    }
+
+    /** 写入内部存储 + Debug 模式下同步写入外部存储 */
+    private fun writeJsonAndSync(fileName: String, data: List<*>) {
+        writeJsonFile(fileName, data)
+        if (BuildConfig.DEBUG) {
+            exportToSyncDir(fileName, data)
+        }
+    }
+
+    /** 将数据导出到外部存储的同步目录，供 adb pull 拉取到 assets/ */
+    private fun exportToSyncDir(fileName: String, data: List<*>) {
+        try {
+            val file = File(syncDir, fileName)
+            val array = JSONArray()
+            data.forEach { item ->
+                array.put(when (item) {
+                    is Book -> item.toJson()
+                    is Highlight -> item.toJson()
+                    is Note -> item.toJson()
+                    is ChatMessage -> item.toJson()
+                    is KnowledgeNode -> item.toJson()
+                    is KnowledgeEdge -> item.toJson()
+                    is ReadingReport -> item.toJson()
+                    else -> JSONObject()
+                })
+            }
+            file.writeText(array.toString(2))
+        } catch (e: Exception) {
+            android.util.Log.e("FileDataSource", "Error exporting $fileName", e)
         }
     }
 
