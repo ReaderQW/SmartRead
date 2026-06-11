@@ -34,6 +34,7 @@ import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.UiConfig
 import com.example.presentation.SmartReadFloatingService
 import com.example.utils.BookDummyData
+import com.example.utils.VivoTtsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,6 +67,8 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val generateReportUseCase = GenerateReportUseCase(reportRepository)
     private val lastProgressByBook = mutableMapOf<Int, Float>()
 
+    private val ttsManager = VivoTtsManager("sk-xuanji-2026316046-SVRqbXNtWmdlaU1oUWlZSQ=")
+
     private val _currentBookId = MutableStateFlow<Int?>(null)
     val currentBookId: StateFlow<Int?> = _currentBookId.asStateFlow()
 
@@ -92,6 +95,16 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _activeReport = MutableStateFlow<ReadingReport?>(null)
     val activeReport: StateFlow<ReadingReport?> = _activeReport.asStateFlow()
+
+    // TTS 控制状态
+    private val _isTtsPlaying = MutableStateFlow(false)
+    val isTtsPlaying: StateFlow<Boolean> = _isTtsPlaying.asStateFlow()
+
+    private val _ttsVolume = MutableStateFlow(55)
+    val ttsVolume: StateFlow<Int> = _ttsVolume.asStateFlow()
+
+    private val _ttsVcn = MutableStateFlow("M24")
+    val ttsVcn: StateFlow<String> = _ttsVcn.asStateFlow()
 
     private val vivoImageRepository = VivoImageRepositoryImpl(VivoClient().api, aigcRemoteDataSource)
     private val _artImageState = MutableStateFlow<ArtImageState>(ArtImageState.Idle)
@@ -138,6 +151,11 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
             fileDataSource.init()
             bookRepository.seedInitialBooks()
             seedDemoNotes()
+        }
+        
+        // 绑定 TTS 状态回调
+        ttsManager.onPlayStateChanged = { playing ->
+            _isTtsPlaying.value = playing
         }
     }
 
@@ -287,6 +305,30 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun toggleTts(text: String) {
+        if (_isTtsPlaying.value) {
+            // 修改：立即暂停并保留断点
+            ttsManager.pause()
+        } else {
+            if (text.isBlank()) return
+            // 修改：speak 内部现已支持逻辑判断：内容没变则续播，变了则清空重播
+            ttsManager.speak(text, _ttsVcn.value, _ttsVolume.value)
+        }
+    }
+
+    fun updateTtsVolume(volume: Int) {
+        _ttsVolume.value = volume
+    }
+
+    fun updateTtsVcn(vcn: String) {
+        _ttsVcn.value = vcn
+        // 如果正在播放，切换音色后重新开始播放（或停止）
+        if (_isTtsPlaying.value) {
+            ttsManager.stop()
+            _isTtsPlaying.value = false
+        }
+    }
+
     fun startSimulatedOcrScan(passageExcerpt: String) {
         _isOcrScanning.value = true
         _scannedOcrText.value = null
@@ -397,5 +439,10 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
                 _artImageState.value = ArtImageState.Error(e.message ?: "生成失败")
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        ttsManager.release()
     }
 }

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.presentation.viewmodel.SmartReadViewModel
+import com.example.ui.components.TtsControlPanel
 import kotlinx.coroutines.launch
 
 // --- SUB-SCREEN: Socratic Dialog chat widget panels ---
@@ -28,6 +29,11 @@ import kotlinx.coroutines.launch
 fun SocraticFloatingPanel(viewModel: SmartReadViewModel) {
     val chatMessages by viewModel.chatMessagesForCurrentBook.collectAsStateWithLifecycle()
     val isAiLoading by viewModel.isAiLoading.collectAsStateWithLifecycle()
+    
+    val isTtsPlaying by viewModel.isTtsPlaying.collectAsStateWithLifecycle()
+    val ttsVolume by viewModel.ttsVolume.collectAsStateWithLifecycle()
+    val ttsVcn by viewModel.ttsVcn.collectAsStateWithLifecycle()
+
     var userDraftMsg by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
@@ -139,12 +145,30 @@ fun SocraticFloatingPanel(viewModel: SmartReadViewModel) {
                                         .padding(10.dp)
                                 ) {
                                     Column {
-                                        Text(
-                                            text = if (isUser) "读者 reflection" else "AI 辩伴 Socrates",
-                                            color = if (isUser) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
-                                            fontSize = 9.sp,
-                                            fontWeight = FontWeight.Bold
-                                        )
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = if (isUser) "读者 reflection" else "AI 辩伴 Socrates",
+                                                color = if (isUser) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            
+                                            // 仅在 AI 回复右侧展示语音控制面板
+                                            if (!isUser) {
+                                                TtsControlPanel(
+                                                    isPlaying = isTtsPlaying,
+                                                    volume = ttsVolume,
+                                                    currentVcn = ttsVcn,
+                                                    onTogglePlay = { viewModel.toggleTts(msg.content) },
+                                                    onVolumeChange = { viewModel.updateTtsVolume(it) },
+                                                    onVcnChange = { viewModel.updateTtsVcn(it) }
+                                                )
+                                            }
+                                        }
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
                                             text = msg.content,
