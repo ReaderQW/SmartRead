@@ -92,8 +92,34 @@ class FileDataSource(private val context: Context) {
     }
 
     fun deleteBook(book: Book) {
-        _books.value = _books.value.filter { it.id != book.id }
+        val bookId = book.id
+        // 1. 删除书籍本身
+        _books.value = _books.value.filter { it.id != bookId }
         saveBooks()
+
+        // 2. 删除关联的划线
+        _highlights.value = _highlights.value.filter { it.bookId != bookId }
+        saveHighlights()
+
+        // 3. 删除关联的笔记 (思绪卡片)
+        _notes.value = _notes.value.filter { it.bookId != bookId }
+        saveNotes()
+
+        // 4. 删除关联的聊天记录
+        _chatMessages.value = _chatMessages.value.filter { it.bookId != bookId }
+        saveChatMessages()
+
+        // 5. 删除关联的知识图谱节点和边
+        // 书籍节点、基于该书笔记生成的节点等
+        _knowledgeNodes.value = _knowledgeNodes.value.filter { it.bookId != bookId }
+        saveKnowledgeNodes()
+        
+        _knowledgeEdges.value = _knowledgeEdges.value.filter { it.bookId != bookId }
+        saveKnowledgeEdges()
+
+        // 6. 删除关联的报告
+        _readingReports.value = _readingReports.value.filter { it.bookId != bookId }
+        saveReadingReports()
     }
 
     // ── Highlight CRUD ──

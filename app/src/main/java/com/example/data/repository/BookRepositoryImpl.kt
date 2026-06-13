@@ -57,6 +57,10 @@ class BookRepositoryImpl(
         id
     }
 
+    override suspend fun deleteBook(book: Book) = withContext(Dispatchers.IO) {
+        fileDataSource.deleteBook(book)
+    }
+
     override suspend fun seedInitialBooks() = withContext(Dispatchers.IO) {
         if (fileDataSource.getBookById(1) == null) {
             val books = listOf(

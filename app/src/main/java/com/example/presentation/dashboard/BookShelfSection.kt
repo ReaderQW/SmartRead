@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -56,12 +57,13 @@ import com.example.ui.components.EmptyStateView
 fun BookShelfView(
     books: List<Book>,
     onBookClick: (Book) -> Unit,
+    onDeleteBook: (Book) -> Unit,
     onAddClick: () -> Unit
 ) {
     if (books.isEmpty()) {
         BookShelfEmptyState(onAddClick = onAddClick)
     } else {
-        BookShelfListContent(books = books, onBookClick = onBookClick, onAddClick = onAddClick)
+        BookShelfListContent(books = books, onBookClick = onBookClick, onDeleteBook = onDeleteBook, onAddClick = onAddClick)
     }
 }
 
@@ -100,6 +102,7 @@ private fun BookShelfEmptyState(onAddClick: () -> Unit) {
 private fun BookShelfListContent(
     books: List<Book>,
     onBookClick: (Book) -> Unit,
+    onDeleteBook: (Book) -> Unit,
     onAddClick: () -> Unit
 ) {
     Column(
@@ -108,6 +111,7 @@ private fun BookShelfListContent(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
+        // ... (Header Row remains same)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -145,7 +149,7 @@ private fun BookShelfListContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         books.forEach { book ->
-            BookCard(book = book, onClick = { onBookClick(book) })
+            BookCard(book = book, onClick = { onBookClick(book) }, onDelete = { onDeleteBook(book) })
         }
     }
 }
@@ -157,7 +161,7 @@ private fun BookShelfListContent(
  * @param onClick 点击卡片时的回调
  */
 @Composable
-private fun BookCard(book: Book, onClick: () -> Unit) {
+private fun BookCard(book: Book, onClick: () -> Unit, onDelete: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -179,7 +183,7 @@ private fun BookCard(book: Book, onClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
 
             // Book Infos
-            BookDetails(book = book)
+            BookDetails(book = book, onDelete = onDelete)
         }
     }
 }
@@ -244,7 +248,7 @@ private fun BookCover(book: Book) {
  * @param book 用于获取分类、标题、作者、简介和进度的图书数据
  */
 @Composable
-private fun BookDetails(book: Book) {
+private fun BookDetails(book: Book, onDelete: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -266,12 +270,18 @@ private fun BookDetails(book: Book) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Text(
-                "点击开启阅读",
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            
+            androidx.compose.material3.IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete Book",
+                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -336,7 +346,8 @@ private fun BookCardPreview() {
                 coverResName = "",
                 type = "DEMO_TEXT"
             ),
-            onClick = {}
+            onClick = {},
+            onDelete = {}
         )
     }
 }

@@ -400,6 +400,15 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun deleteBook(book: Book) {
+        viewModelScope.launch {
+            bookRepository.deleteBook(book)
+            if (_currentBookId.value == book.id) {
+                _currentBookId.value = null
+            }
+        }
+    }
+
     fun startCreatingBook() {
         _isCreatingBook.value = true
     }

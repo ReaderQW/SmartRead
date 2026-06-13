@@ -104,6 +104,7 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
                             it.author.contains(searchQuery, true)
                     },
                     onBookClick = { viewModel.selectBook(it.id) },
+                    onDeleteBook = { viewModel.deleteBook(it) },
                     onAddClick = { viewModel.startCreatingBook() }
                 )
                 1 -> NotesListView(
