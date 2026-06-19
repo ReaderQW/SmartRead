@@ -34,8 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.SleekHighlightBlue
 import com.example.ui.theme.SleekHighlightDefault
 import com.example.ui.theme.SleekHighlightGreen
@@ -154,5 +156,49 @@ fun ReaderSelectionToolbar(
                 }
             }
         }
+    }
+}
+
+// ── Previews ──
+
+@Preview(name = "Light — short text", showBackground = true, backgroundColor = 0xFFFDF7FF)
+@Composable
+private fun ReaderSelectionToolbarShortTextPreview() {
+    MyApplicationTheme {
+        ReaderSelectionToolbar(
+            selectedText = "未经省察的生活是不值得度过的",
+            onClearSelection = {},
+            onSaveHighlight = {},
+            onOpenSocraticWithText = {},
+            onOpenCommentDialog = {}
+        )
+    }
+}
+
+@Preview(name = "Light — long text", showBackground = true, backgroundColor = 0xFFFDF7FF)
+@Composable
+private fun ReaderSelectionToolbarLongTextPreview() {
+    MyApplicationTheme {
+        ReaderSelectionToolbar(
+            selectedText = "人是万物的尺度，是存在者存在的尺度，也是不存在者不存在的尺度。这句话体现了普罗泰戈拉相对主义哲学的核心思想。",
+            onClearSelection = {},
+            onSaveHighlight = {},
+            onOpenSocraticWithText = {},
+            onOpenCommentDialog = {}
+        )
+    }
+}
+
+@Preview(name = "Dark — short text", showBackground = true, backgroundColor = 0xFF141218)
+@Composable
+private fun ReaderSelectionToolbarDarkPreview() {
+    MyApplicationTheme(themeMode = com.example.ui.theme.ThemeMode.DARK) {
+        ReaderSelectionToolbar(
+            selectedText = "知识就是力量",
+            onClearSelection = {},
+            onSaveHighlight = {},
+            onOpenSocraticWithText = {},
+            onOpenCommentDialog = {}
+        )
     }
 }
