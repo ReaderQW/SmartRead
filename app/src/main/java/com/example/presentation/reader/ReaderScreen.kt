@@ -198,6 +198,7 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
 @Composable
 fun FloatingBookReaderView(activeBook: Book, notes: List<Note>, viewModel: SmartReadViewModel) {
     val isFloatingAssistantOpen by viewModel.isFloatingAssistantOpen.collectAsStateWithLifecycle()
+    var isFloatingServiceActive by remember { mutableStateOf(false) }
     val isAiLoading by viewModel.isAiLoading.collectAsStateWithLifecycle()
     val activeReport by viewModel.activeReport.collectAsStateWithLifecycle()
     var showGiftBox by remember { mutableStateOf(false) }
@@ -242,15 +243,44 @@ fun FloatingBookReaderView(activeBook: Book, notes: List<Note>, viewModel: Smart
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Card(modifier = Modifier.fillMaxWidth().height(56.dp).clickable { viewModel.setFloatingServiceActive(true) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().height(56.dp).clickable {
+                        isFloatingServiceActive = !isFloatingServiceActive
+                        viewModel.setFloatingServiceActive(isFloatingServiceActive)
+                    },
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isFloatingServiceActive)
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        else MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(
+                        1.dp,
+                        if (isFloatingServiceActive)
+                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.3f)
+                        else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    )
+                ) {
                     Row(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-                        Icon(Icons.Default.OpenInNew, null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.OpenInNew, null, tint = if (isFloatingServiceActive) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("开启悬浮阅读窗", color = MaterialTheme.colorScheme.primary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            if (isFloatingServiceActive) "关闭悬浮阅读窗" else "开启悬浮阅读窗",
+                            color = if (isFloatingServiceActive) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.primary,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                Text("悬浮窗可在其他阅读软件中截图后，通过 OCR 提取文字并记录思绪卡片。退出App后悬浮窗不消失。", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
+                Text(
+                    if (isFloatingServiceActive) "悬浮窗已开启，退出App后悬浮球不会消失，可在其他应用上层使用。"
+                    else "悬浮窗可在其他阅读软件中截图后，通过 OCR 提取文字并记录思绪卡片。退出App后悬浮窗不消失。",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
                 Spacer(modifier = Modifier.height(32.dp))
                 if (activeBook.summaryText.isNotBlank()) {
                     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(12.dp)) {

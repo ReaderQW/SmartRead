@@ -47,6 +47,21 @@ sealed class Result<out T> {
         if (this is Loading) action()
         return this
     }
+
+    inline fun <R> fold(
+        onSuccess: (T) -> R,
+        onFailure: (Exception) -> R
+    ): R = when (this) {
+        is Success -> onSuccess(data)
+        is Error -> onFailure(exception)
+        is Loading -> throw IllegalStateException("Cannot fold Loading state")
+    }
+
+    companion object {
+        fun <T> success(data: T): Result<T> = Success(data)
+        fun <T> failure(exception: Exception): Result<T> = Error(exception)
+        fun <T> loading(): Result<T> = Loading
+    }
 }
 
 // 扩展函数方便创建

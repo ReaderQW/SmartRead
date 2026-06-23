@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,6 +59,8 @@ import com.example.ui.theme.UiConfig
  * @param onUpdateUiFont 更新界面字体
  * @param onUpdateReadingFont 更新阅读字体
  * @param onUpdateColorTheme 更新配色主题
+ * @param isFloatingServiceActive 悬浮窗服务是否已开启
+ * @param onToggleFloatingService 切换悬浮窗服务开关
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -67,8 +71,11 @@ fun SettingsSidebar(
     onUpdateThemeMode: (ThemeMode) -> Unit,
     onUpdateUiFont: (FontOption) -> Unit,
     onUpdateReadingFont: (FontOption) -> Unit,
-    onUpdateColorTheme: (ColorTheme) -> Unit
+    onUpdateColorTheme: (ColorTheme) -> Unit,
+    isFloatingServiceActive: Boolean = false,
+    onToggleFloatingService: () -> Unit = {}
 ) {
+
     // 遮罩层 + 侧边栏容器
     Box(modifier = Modifier.fillMaxSize()) {
         // 半透明遮罩层 — 点击关闭
@@ -250,6 +257,51 @@ fun SettingsSidebar(
                                 previewText = "预览"
                             )
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // ── 悬浮窗设置区块 ──
+                    SectionHeader(title = "悬浮窗")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "开启后可在其他应用上层显示悬浮球，退出App后不消失",
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "OCR 悬浮截图",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Switch(
+                            checked = isFloatingServiceActive,
+                            onCheckedChange = { onToggleFloatingService() }
+                        )
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))

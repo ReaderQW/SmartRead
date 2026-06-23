@@ -75,6 +75,10 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     private val _isCreatingBook = MutableStateFlow(false)
     val isCreatingBook: StateFlow<Boolean> = _isCreatingBook.asStateFlow()
 
+    private val _showBookList = MutableStateFlow(false)
+    val showBookList: StateFlow<Boolean> = _showBookList.asStateFlow()
+
+
     private val _currentPageIndex = MutableStateFlow(0)
     val currentPageIndex: StateFlow<Int> = _currentPageIndex.asStateFlow()
 
@@ -273,15 +277,30 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun setFloatingServiceActive(active: Boolean) {
         val context = getApplication<Application>()
-        val intent = Intent(context, SmartReadFloatingService::class.java)
         if (active) {
+            // 检查悬浮窗权限 (Android 6.0+ 需要)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                !android.provider.Settings.canDrawOverlays(context)
+            ) {
+                // 无法直接请求权限，通过 Intent 引导用户去设置页开启
+                val intent = android.content.Intent(
+                    android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    android.net.Uri.parse("package:${context.packageName}")
+                )
+                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+                return
+            }
+
+            val serviceIntent = Intent(context, SmartReadFloatingService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
+                context.startForegroundService(serviceIntent)
             } else {
-                context.startService(intent)
+                context.startService(serviceIntent)
             }
         } else {
-            context.stopService(intent)
+            val serviceIntent = Intent(context, SmartReadFloatingService::class.java)
+            context.stopService(serviceIntent)
         }
     }
 
@@ -409,9 +428,14 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun setShowBookList(show: Boolean) {
+        _showBookList.value = show
+    }
+
     fun startCreatingBook() {
         _isCreatingBook.value = true
     }
+
 
     fun cancelCreatingBook() {
         _isCreatingBook.value = false

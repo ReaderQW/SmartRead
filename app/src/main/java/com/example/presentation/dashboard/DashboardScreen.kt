@@ -74,6 +74,7 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
     var searchQuery by remember { mutableStateOf("") }
     var showSettings by remember { mutableStateOf(false) }
     var selectedNoteBookId by remember { mutableStateOf<Int?>(null) }
+    var isFloatingServiceActive by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -134,7 +135,12 @@ fun DashboardScreen(viewModel: SmartReadViewModel) {
             onUpdateThemeMode = { viewModel.updateThemeMode(it) },
             onUpdateUiFont = { viewModel.updateUiFont(it) },
             onUpdateReadingFont = { viewModel.updateReadingFont(it) },
-            onUpdateColorTheme = { viewModel.updateColorTheme(it) }
+            onUpdateColorTheme = { viewModel.updateColorTheme(it) },
+            isFloatingServiceActive = isFloatingServiceActive,
+            onToggleFloatingService = {
+                isFloatingServiceActive = !isFloatingServiceActive
+                viewModel.setFloatingServiceActive(isFloatingServiceActive)
+            }
         )
     }
 }
