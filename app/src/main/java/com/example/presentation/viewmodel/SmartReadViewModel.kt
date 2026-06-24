@@ -5,6 +5,9 @@ import android.content.Intent
 import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import com.example.data.local.FileDataSource
 import com.example.data.local.SmartReadDatabase
 import com.example.data.remote.AigcRemoteDataSource
@@ -119,6 +122,11 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _uiConfig = MutableStateFlow(UiConfig())
     val uiConfig: StateFlow<UiConfig> = _uiConfig.asStateFlow()
+
+    // 悬浮窗启动需要先获取 MediaProjection 授权
+    private val _screenCaptureRequest = Channel<Unit>(Channel.BUFFERED)
+    val screenCaptureRequest: Flow<Unit> = _screenCaptureRequest.receiveAsFlow()
+    private var pendingFloatingServiceEnable = false
 
     val allBooks: StateFlow<List<Book>> = bookRepository.allBooks
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -282,7 +290,6 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 !android.provider.Settings.canDrawOverlays(context)
             ) {
-                // 无法直接请求权限，通过 Intent 引导用户去设置页开启
                 val intent = android.content.Intent(
                     android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                     android.net.Uri.parse("package:${context.packageName}")
@@ -292,16 +299,36 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
                 return
             }
 
+            // 1. 先启动 Service（startForeground 不需要 MediaProjection），显示悬浮球
             val serviceIntent = Intent(context, SmartReadFloatingService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(serviceIntent)
             } else {
                 context.startService(serviceIntent)
             }
+
+            // 2. 再请求 MediaProjection 授权（Android 14+ 要求此时 Service 已运行）
+            pendingFloatingServiceEnable = true
+            _screenCaptureRequest.trySend(Unit)
         } else {
-            val serviceIntent = Intent(context, SmartReadFloatingService::class.java)
-            context.stopService(serviceIntent)
+            pendingFloatingServiceEnable = false
+            context.stopService(Intent(context, SmartReadFloatingService::class.java))
         }
+    }
+
+    /**
+     * MediaProjection 授权成功后由 MainActivity 调用，清除 pending 标记。
+     * Service 已在 setFloatingServiceActive(true) 中启动，此处只需初始化 ScreenCaptureManager。
+     */
+    fun onScreenCaptureGranted() {
+        pendingFloatingServiceEnable = false
+    }
+
+    /**
+     * 用户拒绝 MediaProjection 授权时由 MainActivity 调用，重置待启状态。
+     */
+    fun onScreenCaptureDenied() {
+        pendingFloatingServiceEnable = false
     }
 
     fun sendSocraticMessage(userMsg: String) {

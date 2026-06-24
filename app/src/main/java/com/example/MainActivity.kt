@@ -20,15 +20,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.example.presentation.SmartReadApp
 import com.example.presentation.SmartReadFloatingService
 import com.example.presentation.viewmodel.SmartReadViewModel
 import com.example.ui.theme.MyApplicationTheme
 import com.example.utils.ScreenCaptureManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var projectionManager: MediaProjectionManager
+    private lateinit var viewModel: SmartReadViewModel
     private var pendingOcrText by mutableStateOf<String?>(null)
     private var pendingScreenshotPath by mutableStateOf<String?>(null)
 
@@ -40,14 +43,10 @@ class MainActivity : ComponentActivity() {
             if (result.resultCode == RESULT_OK) {
                 val projection = projectionManager.getMediaProjection(result.resultCode, result.data!!)
                 ScreenCaptureManager.init(this, projection)
-
-                // 启动悬浮窗 OCR 服务
-                val intent = Intent(this, SmartReadFloatingService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    startForegroundService(intent)
-                } else {
-                    startService(intent)
-                }
+                // Service 已在 setFloatingServiceActive(true) 中启动，此处只需初始化截图能力
+                viewModel.onScreenCaptureGranted()
+            } else {
+                viewModel.onScreenCaptureDenied()
             }
         }
 
@@ -84,7 +83,16 @@ class MainActivity : ComponentActivity() {
             registerReceiver(ocrResultReceiver, filter)
         }
 
-        val viewModel = ViewModelProvider(this)[SmartReadViewModel::class.java]
+        viewModel = ViewModelProvider(this)[SmartReadViewModel::class.java]
+
+        // 监听悬浮窗开关的 MediaProjection 授权请求
+        lifecycleScope.launch {
+            viewModel.screenCaptureRequest.collect {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    requestScreenCapture()
+                }
+            }
+        }
 
         setContent {
             val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()

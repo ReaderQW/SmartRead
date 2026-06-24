@@ -29,6 +29,13 @@ object ScreenCaptureManager {
         contextRef = context
         mediaProjection = projection
 
+        // Android 14+ 要求必须先注册 Callback，否则 createVirtualDisplay() 会抛异常
+        projection?.registerCallback(object : MediaProjection.Callback() {
+            override fun onStop() {
+                release()
+            }
+        }, null)
+
         val metrics = context.resources.displayMetrics
 
         imageReader = ImageReader.newInstance(
