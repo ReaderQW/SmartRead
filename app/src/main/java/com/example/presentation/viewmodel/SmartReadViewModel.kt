@@ -35,6 +35,7 @@ import com.example.ui.theme.ColorTheme
 import com.example.ui.theme.FontOption
 import com.example.ui.theme.ThemeMode
 import com.example.ui.theme.UiConfig
+import com.example.presentation.FloatingThemeColors
 import com.example.presentation.SmartReadFloatingService
 import com.example.utils.BookDummyData
 import com.example.utils.VivoTtsManager
@@ -159,12 +160,15 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        // 同步悬浮球主题色（与默认 UiConfig 一致）
+        FloatingThemeColors.updateFromTheme(_uiConfig.value.colorTheme)
+
         viewModelScope.launch {
             fileDataSource.init()
             bookRepository.seedInitialBooks()
             seedDemoNotes()
         }
-        
+
         // 绑定 TTS 状态回调
         ttsManager.onPlayStateChanged = { playing ->
             _isTtsPlaying.value = playing
@@ -208,6 +212,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun updateColorTheme(colorTheme: ColorTheme) {
         _uiConfig.value = _uiConfig.value.copy(colorTheme = colorTheme)
+        FloatingThemeColors.updateFromTheme(colorTheme)
     }
 
     fun selectBook(bookId: Int?) {

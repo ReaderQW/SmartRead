@@ -138,6 +138,51 @@ fun SettingsSidebar(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // ── 悬浮窗设置区块（置顶） ──
+                    SectionHeader(title = "悬浮窗")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "开启后可在其他应用上层显示悬浮球，退出App后不消失",
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.OpenInNew,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "OCR 悬浮截图",
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Switch(
+                            checked = isFloatingServiceActive,
+                            onCheckedChange = { onToggleFloatingService() }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     // ── 主题设置区块 ──
                     SectionHeader(title = "主题模式")
                     Spacer(modifier = Modifier.height(12.dp))
@@ -265,46 +310,6 @@ fun SettingsSidebar(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
                     )
                     Spacer(modifier = Modifier.height(20.dp))
-
-                    // ── 悬浮窗设置区块 ──
-                    SectionHeader(title = "悬浮窗")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "开启后可在其他应用上层显示悬浮球，退出App后不消失",
-                        modifier = Modifier.padding(horizontal = 20.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.OpenInNew,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "OCR 悬浮截图",
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        Switch(
-                            checked = isFloatingServiceActive,
-                            onCheckedChange = { onToggleFloatingService() }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }

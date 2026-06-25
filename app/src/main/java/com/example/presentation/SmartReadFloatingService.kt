@@ -19,13 +19,30 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.utils.OcrTextRecognizer
 import com.example.utils.ScreenCaptureManager
+import com.example.presentation.FloatingThemeColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -94,15 +111,16 @@ class SmartReadFloatingService : Service() {
         removeAllViews()
 
         val ball = ImageView(this).apply {
-            setImageResource(android.R.drawable.ic_menu_camera)
-            setColorFilter(Color.WHITE)
-            setPadding(12, 12, 12, 12)
+            // 矢量图标，任意 dpi 下不失真；CENTER_INSIDE 防止溢出边缘
+            setImageResource(com.example.R.drawable.ic_camera_white)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dpToPx(14), dpToPx(14), dpToPx(14), dpToPx(14))
 
-            // 蓝色圆形背景
-            background = GradientDrawable().apply {
-                setColor(0xFF4A90D9.toInt())
-                shape = GradientDrawable.OVAL
-            }
+            // 渐变背景 + 双色边（主题色 primaryContainer 色系）
+            background = FloatingThemeColors.createGradientDrawable(
+                shape = GradientDrawable.OVAL,
+                strokeWidthPx = dpToPx(2).toFloat()
+            )
         }
 
         floatingBall = ball
@@ -170,64 +188,129 @@ class SmartReadFloatingService : Service() {
     private fun showMenu() {
         removeMenu()
 
-        val menuLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, 0)
-
-            // 白色圆角背景
-            background = GradientDrawable().apply {
-                setColor(Color.WHITE)
-                cornerRadius = dpToPx(12).toFloat()
-                setStroke(1, Color.parseColor("#E0E0E0"))
+        // 遮罩层 — 点击关闭菜单
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#80000000"))
+            setOnTouchListener { _, event ->
+                if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                    removeMenu()
+                    true
+                } else false
             }
         }
 
-        fun addMenuItem(label: String, emoji: String, textColor: Int, onClick: () -> Unit) {
-            val tv = TextView(this).apply {
-                text = "$emoji  $label"
-                textSize = 14f
-                setTextColor(textColor)
-                gravity = Gravity.CENTER
-                setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+        // 菜单卡片 — Material 3 风格
+        val menuCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                setColor(Color.WHITE)
+                cornerRadius = dpToPx(20).toFloat()
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                elevation = dpToPx(3).toFloat()
+            }
+        }
+
+        fun createMenuItem(
+            emoji: String,
+            label: String,
+            desc: String?,
+            textColor: Int,
+            circleBg: Int = 0xFFF3E8FF.toInt(),
+            onClick: () -> Unit
+        ): View {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dpToPx(20), dpToPx(14), dpToPx(20), dpToPx(14))
+                isClickable = true
+                isFocusable = true
+                // Ripple 点击反馈
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    val outValue = android.util.TypedValue()
+                    theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                    if (outValue.resourceId != 0) {
+                        foreground = getDrawable(outValue.resourceId)
+                    }
+                }
                 setOnClickListener {
                     onClick()
                     removeMenu()
                 }
             }
-            menuLayout.addView(tv)
 
-            // 分隔线
-            val divider = View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT, 1
-                )
-                setBackgroundColor(Color.parseColor("#EEEEEE"))
+            // 彩色圆形图标背景
+            val iconCircle = TextView(this).apply {
+                text = emoji
+                textSize = 16f
+                gravity = Gravity.CENTER
+                val size = dpToPx(40)
+                layoutParams = LinearLayout.LayoutParams(size, size)
+                background = GradientDrawable().apply {
+                    setColor(circleBg)
+                    shape = GradientDrawable.OVAL
+                }
             }
-            menuLayout.addView(divider)
+            row.addView(iconCircle)
+
+            // 文字列
+            val textColumn = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                setPadding(dpToPx(14), 0, 0, 0)
+            }
+            textColumn.addView(TextView(this).apply {
+                text = label
+                textSize = 15f
+                setTextColor(textColor)
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+            })
+            if (desc != null) {
+                textColumn.addView(TextView(this).apply {
+                    text = desc
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#888888"))
+                })
+            }
+            row.addView(textColumn)
+            return row
         }
 
-        addMenuItem("截图识别", "📷", Color.parseColor("#333333")) {
+        fun createDivider(): View {
+            val divider = View(this)
+            divider.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 1
+            ).apply { setMargins(dpToPx(20), 0, dpToPx(20), 0) }
+            divider.setBackgroundColor(Color.parseColor("#EEEEEE"))
+            return divider
+        }
+
+        // ── 组装菜单项 ──
+        menuCard.addView(createMenuItem("📷", "OCR 截图识别", "截取屏幕并提取文字", Color.parseColor("#333333")) {
             performCaptureAndOcr()
-        }
-        addMenuItem("AI伴读", "🤖", Color.parseColor("#333333")) {
+        })
+        menuCard.addView(createDivider())
+        menuCard.addView(createMenuItem("💡", "AI 伴读", "苏格拉底式对话", Color.parseColor("#333333")) {
             Toast.makeText(this, "AI伴读已开启", Toast.LENGTH_SHORT).show()
-        }
-        // 关闭按钮
-        val closeTv = TextView(this).apply {
-            text = "✕  隐藏悬浮窗"
-            textSize = 14f
-            setTextColor(Color.parseColor("#CC3333"))
-            gravity = Gravity.CENTER
-            setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
-            setOnClickListener { stopSelf() }
-        }
-        menuLayout.addView(closeTv)
+        })
+        menuCard.addView(createDivider())
+        menuCard.addView(createMenuItem("✕", "隐藏悬浮窗", null, Color.parseColor("#CC3333"), circleBg = 0xFFFFE8E8.toInt()) {
+            stopSelf()
+        })
 
-        menuPopup = menuLayout
+        // 菜单卡片放入遮罩
+        container.addView(menuCard, FrameLayout.LayoutParams(
+            dpToPx(200),
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.CENTER
+        ))
 
+        menuPopup = container
+
+        val screenSize = resources.displayMetrics
         val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            screenSize.widthPixels,
+            screenSize.heightPixels,
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                 WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             else WindowManager.LayoutParams.TYPE_PHONE,
@@ -237,7 +320,7 @@ class SmartReadFloatingService : Service() {
             gravity = Gravity.CENTER
         }
 
-        windowManager.addView(menuLayout, params)
+        windowManager.addView(container, params)
     }
 
     private fun removeMenu() {
@@ -461,4 +544,85 @@ class SmartReadFloatingService : Service() {
 
     private fun dpToPx(dp: Int): Int =
         (dp * resources.displayMetrics.density).toInt()
+}
+
+/**
+ * 悬浮窗菜单预览 — 使用 Compose 渲染，与 [showMenu] 的 View 实现样式一致。
+ * 仅用于 UI 调试，不影响正式功能。
+ */
+@Preview(showBackground = true, backgroundColor = 0xFFF0F0F0)
+@Composable
+fun FloatingMenuPreview() {
+    val DarkText = ComposeColor(0xFF333333)
+    val RedText = ComposeColor(0xFFCC3333)
+    val LightPurple = ComposeColor(0xFFF3E8FF)
+    val LightPink = ComposeColor(0xFFFFE8E8)
+    val Divider = ComposeColor(0xFFEEEEEE)
+
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        // 遮罩
+        Box(modifier = Modifier.fillMaxSize().background(ComposeColor.Black.copy(alpha = 0.5f)))
+
+        // 菜单卡片
+        Column(
+            modifier = Modifier
+                .width(200.dp)
+                .background(ComposeColor.White, shape = RoundedCornerShape(20.dp))
+                .shadow(3.dp, RoundedCornerShape(20.dp)),
+        ) {
+            MenuRow(emoji = "📷", label = "OCR 截图识别", desc = "截取屏幕并提取文字", circleBg = LightPurple, textColor = DarkText)
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Divider, thickness = 1.dp)
+            MenuRow(emoji = "💡", label = "AI 伴读", desc = "苏格拉底式对话", circleBg = LightPurple, textColor = DarkText)
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 20.dp), color = Divider, thickness = 1.dp)
+            MenuRow(emoji = "✕", label = "隐藏悬浮窗", desc = null, circleBg = LightPink, textColor = RedText)
+        }
+    }
+}
+
+@Composable
+private fun MenuRow(
+    emoji: String,
+    label: String,
+    desc: String?,
+    circleBg: ComposeColor,
+    textColor: ComposeColor
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 彩色圆形图标背景
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(circleBg, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = emoji, fontSize = 16.sp)
+        }
+
+        Spacer(modifier = Modifier.width(14.dp))
+
+        // 文字列
+        Column {
+            Text(
+                text = label,
+                fontSize = 15.sp,
+                color = textColor,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            if (desc != null) {
+                Text(
+                    text = desc,
+                    fontSize = 11.sp,
+                    color = ComposeColor(0xFF888888)
+                )
+            }
+        }
+    }
 }
