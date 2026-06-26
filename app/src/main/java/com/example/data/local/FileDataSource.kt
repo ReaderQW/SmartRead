@@ -45,6 +45,7 @@ class FileDataSource(private val context: Context) {
     private val _knowledgeNodes = MutableStateFlow<List<KnowledgeNode>>(emptyList())
     private val _knowledgeEdges = MutableStateFlow<List<KnowledgeEdge>>(emptyList())
     private val _readingReports = MutableStateFlow<List<ReadingReport>>(emptyList())
+    private val _bookPages = MutableStateFlow<Map<Int, List<String>>>(emptyMap())
 
     // ── 公开只读 Flow ──
     val observeBooks: Flow<List<Book>> = _books.asStateFlow()
@@ -63,6 +64,9 @@ class FileDataSource(private val context: Context) {
 
     fun observeReport(bookId: Int): Flow<ReadingReport?> =
         _readingReports.asStateFlow().map { reports -> reports.firstOrNull { it.bookId == bookId } }
+
+    fun observeBookPages(bookId: Int): Flow<List<String>> =
+        _bookPages.asStateFlow().map { it[bookId] ?: emptyList() }
 
     // ── 初始化 ──
     suspend fun init() {
@@ -120,6 +124,9 @@ class FileDataSource(private val context: Context) {
         // 6. 删除关联的报告
         _readingReports.value = _readingReports.value.filter { it.bookId != bookId }
         saveReadingReports()
+
+        // 7. 删除书籍分页数据
+        deleteBookPages(bookId)
     }
 
     // ── Highlight CRUD ──
@@ -208,6 +215,24 @@ class FileDataSource(private val context: Context) {
         saveKnowledgeEdges()
     }
 
+    // ── BookPages CRUD ──
+    fun getPagesForBook(bookId: Int): List<String> =
+        _bookPages.value[bookId] ?: emptyList()
+
+    fun saveBookPages(bookId: Int, pages: List<String>) {
+        _bookPages.value = _bookPages.value.toMutableMap().apply {
+            put(bookId, pages)
+        }
+        saveBookPagesFile()
+    }
+
+    fun deleteBookPages(bookId: Int) {
+        _bookPages.value = _bookPages.value.toMutableMap().apply {
+            remove(bookId)
+        }
+        saveBookPagesFile()
+    }
+
     // ── Report CRUD ──
     fun getReport(bookId: Int): ReadingReport? =
         _readingReports.value.firstOrNull { it.bookId == bookId }
@@ -249,6 +274,7 @@ class FileDataSource(private val context: Context) {
         _knowledgeEdges.value = allEdges.filter { it.source in nodeIds && it.target in nodeIds }
 
         _readingReports.value = readJsonList("reading_reports.json") { it.toReport() }
+        loadBookPages()
     }
 
     private fun saveBooks() = writeJsonAndSync("books.json", _books.value)
@@ -258,6 +284,45 @@ class FileDataSource(private val context: Context) {
     private fun saveKnowledgeNodes() = writeJsonAndSync("knowledge_nodes.json", _knowledgeNodes.value)
     private fun saveKnowledgeEdges() = writeJsonAndSync("knowledge_edges.json", _knowledgeEdges.value)
     private fun saveReadingReports() = writeJsonAndSync("reading_reports.json", _readingReports.value)
+
+    private fun saveBookPagesFile() {
+        try {
+            val file = File(dataDir, "book_pages.json")
+            val json = JSONObject()
+            _bookPages.value.forEach { (bookId, pages) ->
+                json.put(bookId.toString(), JSONArray(pages))
+            }
+            file.writeText(json.toString(2))
+            if (BuildConfig.DEBUG) {
+                val syncFile = File(syncDir, "book_pages.json")
+                syncFile.writeText(json.toString(2))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("FileDataSource", "Error saving book_pages.json", e)
+        }
+    }
+
+    private fun loadBookPages() {
+        try {
+            val file = File(dataDir, "book_pages.json")
+            if (!file.exists()) {
+                _bookPages.value = emptyMap()
+                return
+            }
+            val json = JSONObject(file.readText())
+            val map = mutableMapOf<Int, List<String>>()
+            json.keys().forEach { key ->
+                val bookId = key.toIntOrNull() ?: return@forEach
+                val arr = json.getJSONArray(key)
+                val pages = (0 until arr.length()).map { arr.getString(it) }
+                map[bookId] = pages
+            }
+            _bookPages.value = map
+        } catch (e: Exception) {
+            android.util.Log.e("FileDataSource", "Error loading book_pages.json", e)
+            _bookPages.value = emptyMap()
+        }
+    }
 
     private fun copySeedFromAssets() {
         listOf(

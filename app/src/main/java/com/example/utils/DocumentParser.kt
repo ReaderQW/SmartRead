@@ -2,6 +2,7 @@ package com.example.utils
 
 import android.content.Context
 import android.net.Uri
+import java.io.File
 import java.nio.charset.Charset
 
 /**
@@ -13,16 +14,14 @@ object DocumentParser {
 
     /**
      * 解析文档。返回全文和按段落分页的列表。
-     * @param mimeType 从 ContentResolver 获取的 MIME 类型
+     * @param filePath 文件绝对路径（内部存储）
      */
     fun parse(
-        context: Context,
-        uri: Uri,
-        mimeType: String? = null
+        filePath: String
     ): DocumentResult {
-        // 读取字节（不再严格检查 MIME，部分系统将 .txt 报为 octet-stream）
         return try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: byteArrayOf()
+            val file = File(filePath)
+            val bytes = file.readBytes()
 
             if (bytes.isEmpty()) {
                 return DocumentResult("", listOf("文件内容为空。"))
@@ -49,7 +48,62 @@ object DocumentParser {
             if (text.isBlank()) {
                 DocumentResult("", listOf("文件内容为空。"))
             } else {
-                // 按行分页：每页约 15 行（适合手机屏幕），过滤纯空行
+                // 按行分页：每页约 10 行（适合手机屏幕），过滤纯空行
+                val lines = text.lines().filter { it.isNotBlank() }
+                val maxLinesPerPage = 10
+                val pages = mutableListOf<String>()
+
+                var lineIndex = 0
+                while (lineIndex < lines.size) {
+                    val endIndex = minOf(lineIndex + maxLinesPerPage, lines.size)
+                    val pageLines = lines.subList(lineIndex, endIndex).joinToString("\n")
+                    pages.add(pageLines)
+                    lineIndex = endIndex
+                }
+
+                DocumentResult(text, pages.ifEmpty { listOf(text.take(300)) })
+            }
+        } catch (e: Exception) {
+            DocumentResult(
+                "",
+                listOf("文件解析失败: ${e.localizedMessage}。请上传 TXT 格式的文件。")
+            )
+        }
+    }
+
+    /**
+     * 解析文档（URI 版本，保留兼容性）。
+     */
+    fun parse(
+        context: Context,
+        uri: Uri,
+        mimeType: String? = null
+    ): DocumentResult {
+        return try {
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: byteArrayOf()
+
+            if (bytes.isEmpty()) {
+                return DocumentResult("", listOf("文件内容为空。"))
+            }
+
+            val text = if (bytes.size >= 3 &&
+                bytes[0] == 0xEF.toByte() &&
+                bytes[1] == 0xBB.toByte() &&
+                bytes[2] == 0xBF.toByte()
+            ) {
+                bytes.copyOfRange(3, bytes.size).toString(Charsets.UTF_8)
+            } else {
+                val utf8 = bytes.toString(Charsets.UTF_8)
+                if (utf8.count { it == '\uFFFD' } > utf8.length * 0.05 && utf8.length > 0) {
+                    bytes.toString(Charset.forName("GBK"))
+                } else {
+                    utf8
+                }
+            }
+
+            if (text.isBlank()) {
+                DocumentResult("", listOf("文件内容为空。"))
+            } else {
                 val lines = text.lines().filter { it.isNotBlank() }
                 val maxLinesPerPage = 15
                 val pages = mutableListOf<String>()

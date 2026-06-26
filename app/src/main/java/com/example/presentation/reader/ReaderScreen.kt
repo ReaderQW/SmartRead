@@ -107,8 +107,10 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
         return
     }
 
-    val bookExcerpts = remember(currentBookId) {
-        BookDummyData.excerpts[currentBookId] ?: listOf("内容缺失")
+    val storedPages by viewModel.currentBookPages.collectAsStateWithLifecycle()
+    val bookExcerpts = remember(currentBookId, storedPages) {
+        if (storedPages.isNotEmpty()) storedPages
+        else BookDummyData.excerpts[currentBookId] ?: listOf("内容缺失")
     }
 
     val pageContent = bookExcerpts.getOrNull(pageIndex) ?: "页码超出范围"
@@ -234,12 +236,12 @@ fun FloatingBookReaderView(activeBook: Book, notes: List<Note>, viewModel: Smart
                 Text(activeBook.author, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(32.dp))
                 Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
-                    Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📖", fontSize = 40.sp)
+                    Column(modifier = Modifier.padding(24.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("📖", fontSize = 40.sp, textAlign = TextAlign.Center)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("已存入", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("${notes.size}", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Serif)
-                        Text("张思绪卡片", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Text("已存入", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        Text("${notes.size}", fontSize = 56.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontFamily = FontFamily.Serif, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                        Text("张思绪卡片", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))

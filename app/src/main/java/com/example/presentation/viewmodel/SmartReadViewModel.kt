@@ -38,6 +38,7 @@ import com.example.ui.theme.UiConfig
 import com.example.presentation.FloatingThemeColors
 import com.example.presentation.SmartReadFloatingService
 import com.example.utils.BookDummyData
+import com.example.utils.DocumentParser
 import com.example.utils.VivoTtsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -156,6 +157,14 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
     val chatMessagesForCurrentBook: StateFlow<List<ChatMessage>> = _currentBookId
         .flatMapLatest { id ->
             if (id != null) chatRepository.getChatMessagesForBook(id) else flowOf(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /** 当前书籍的分页内容（从 TXT 文件解析） */
+    val currentBookPages: StateFlow<List<String>> = _currentBookId
+        .flatMapLatest { id ->
+            if (id != null) fileDataSource.observeBookPages(id)
+            else flowOf(emptyList())
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -475,7 +484,25 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun createBook(book: Book, onComplete: (Int) -> Unit) {
         viewModelScope.launch {
-            val newId = bookRepository.addBook(book)
+            // 如果是 FILE 类型且有 fileUri，先解析 TXT 文件
+            var finalBook = book
+            if (book.type == "FILE" && !book.fileUri.isNullOrBlank()) {
+                val result = DocumentParser.parse(book.fileUri)
+                if (result.pages.isNotEmpty()) {
+                    finalBook = book.copy(totalPages = result.pages.size)
+                }
+            }
+
+            val newId = bookRepository.addBook(finalBook)
+
+            // 存储分页内容
+            if (finalBook.type == "FILE" && !finalBook.fileUri.isNullOrBlank()) {
+                val result = DocumentParser.parse(finalBook.fileUri)
+                if (result.pages.isNotEmpty()) {
+                    fileDataSource.saveBookPages(newId, result.pages)
+                }
+            }
+
             _isCreatingBook.value = false
             onComplete(newId)
         }

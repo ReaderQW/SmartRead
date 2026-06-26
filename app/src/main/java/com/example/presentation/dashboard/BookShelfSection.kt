@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import java.io.File
 import com.example.domain.model.Book
 import com.example.ui.components.EmptyStateView
 
@@ -217,27 +220,38 @@ private fun BookCover(book: Book) {
                         )
                     }
                 )
-            )
-            .padding(6.dp),
+            ),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.Book,
-                contentDescription = "Book icon",
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
+        if (!book.coverUri.isNullOrBlank()) {
+            AsyncImage(
+                model = File(book.coverUri),
+                contentDescription = "封面",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = book.title,
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+        } else {
+            Column(
+                modifier = Modifier.padding(6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    Icons.Default.Book,
+                    contentDescription = "Book icon",
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = book.title,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }
