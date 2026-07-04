@@ -20,8 +20,8 @@ class SaveHighlightUseCase(private val readerRepository: ReaderRepository) {
 }
 
 class SaveNoteUseCase(private val noteRepository: NoteRepository) {
-    suspend operator fun invoke(bookId: Int, originalText: String, userInsight: String) =
-        noteRepository.saveNoteWithAiInsight(bookId, originalText, userInsight)
+    suspend operator fun invoke(bookId: Int, originalText: String, userInsight: String, highlightId: Int? = null) =
+        noteRepository.saveNoteWithAiInsight(bookId, originalText, userInsight, highlightId)
 }
 
 class SendSocraticMessageUseCase(private val chatRepository: ChatRepository) {

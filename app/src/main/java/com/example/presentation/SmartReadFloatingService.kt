@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -65,12 +66,17 @@ class SmartReadFloatingService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     companion object {
+        const val TAG = "SmartReadFloatSvc"
         const val CHANNEL_ID = "floating_service"
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_OCR_RESULT = "com.example.action.OCR_RESULT"
         const val EXTRA_OCR_TEXT = "ocr_text"
         const val EXTRA_SCREENSHOT_PATH = "screenshot_path"
+
+        // 选区 OCR（新功能）
+        const val ACTION_AREA_OCR = "com.example.action.AREA_OCR"
+        const val EXTRA_AREA_SCREENSHOT_PATH = "area_screenshot_path"
     }
 
     override fun onCreate() {
@@ -142,6 +148,36 @@ class SmartReadFloatingService : Service() {
         setupDrag(ball, params)
 
         windowManager.addView(ball, params)
+
+        // 悬浮球显示后，延迟检查无障碍服务状态（给系统一点时间连接）
+        handler.postDelayed({
+            checkAccessibilityStatus()
+        }, 1500)
+    }
+
+    /**
+     * 检查 AccessibilityService 是否已连接。
+     * 仅 Android 13+ 需要，未开启时在通知栏提示用户。
+     */
+    private fun checkAccessibilityStatus() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        // instance 非空 → 服务已连接
+        if (OcrAccessibilityService.instance != null) {
+            Log.i(TAG, "checkAccessibilityStatus: 无障碍服务已开启")
+            return
+        }
+        Log.w(TAG, "checkAccessibilityStatus: 无障碍服务未开启")
+        showToast("提示：在系统「无障碍」中开启 SmartRead，可边录屏边使用截图功能")
+
+        // 在持续通知中增加一行提示
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("SmartRead 悬浮窗")
+            .setContentText("未开启无障碍服务，录屏时无法使用截图")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setOngoing(true)
+            .build()
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, notification)
     }
 
     private var isDragging = false
@@ -290,6 +326,10 @@ class SmartReadFloatingService : Service() {
             performCaptureAndOcr()
         })
         menuCard.addView(createDivider())
+        menuCard.addView(createMenuItem("✂️", "选区识别", "截屏后框选文字区域", Color.parseColor("#333333"), circleBg = 0xFFE3F2FD.toInt()) {
+            performCaptureForAreaOcr()
+        })
+        menuCard.addView(createDivider())
         menuCard.addView(createMenuItem("💡", "AI 伴读", "苏格拉底式对话", Color.parseColor("#333333")) {
             Toast.makeText(this, "AI伴读已开启", Toast.LENGTH_SHORT).show()
         })
@@ -341,23 +381,14 @@ class SmartReadFloatingService : Service() {
 
     // ── 截图 + OCR ──
 
+    /**
+     * 全文 OCR：截屏 → ML Kit OCR → 弹窗展示 → 创建书籍
+     */
     private fun performCaptureAndOcr() {
-        // 检查 ScreenCaptureManager 是否已初始化
-        if (!isScreenCaptureReady()) {
-            showToast("请先在 App 内点击「OCR截图批注」按钮授权屏幕录制权限")
-            // 发送广播通知 MainActivity 弹出授权
-            val intent = Intent("com.example.action.REQUEST_SCREEN_CAPTURE")
-            sendBroadcast(intent)
-            return
-        }
-
+        if (!prepareCapture()) return
         showToast("正在截图识别...")
-
-        ScreenCaptureManager.captureBitmapWithDelay(500) { bitmap ->
-            if (bitmap == null) {
-                showToast("截图失败，请重试")
-                return@captureBitmapWithDelay
-            }
+        captureBitmap { bitmap ->
+            if (bitmap == null) { showToast("截图失败，请重试"); return@captureBitmap }
 
             scope.launch {
                 showOcrLoading()
@@ -379,9 +410,105 @@ class SmartReadFloatingService : Service() {
         }
     }
 
+    /**
+     * 选区 OCR：截屏 → 保存 → 发送到 App 端框选
+     */
+    private fun performCaptureForAreaOcr() {
+        if (!prepareCapture()) return
+        showToast("正在截图...")
+        captureBitmap { bitmap ->
+            if (bitmap == null) { showToast("截图失败，请重试"); return@captureBitmap }
+
+            val file = saveScreenshot(bitmap)
+            if (file == null) { showToast("保存截图失败"); return@captureBitmap }
+
+            sendBroadcast(Intent(ACTION_AREA_OCR).apply {
+                putExtra(EXTRA_AREA_SCREENSHOT_PATH, file.absolutePath)
+            })
+            launchAppToForeground()
+            showToast("截图已发送至 App")
+        }
+    }
+
+    // ── 截图方式管理（优先 AccessibilityService → 回退 MediaProjection） ──
+
+    /**
+     * 准备截图：检查是否有可用截图方式。
+     * @return true 可以截图，false 需要用户先授权
+     */
+    private fun prepareCapture(): Boolean {
+        // 1. AccessibilityService 无需额外授权
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && OcrAccessibilityService.instance != null) {
+            Log.i(TAG, "截图方式: AccessibilityService（不中断系统录屏）")
+            return true
+        }
+        // 2. MediaProjection 已初始化
+        if (isScreenCaptureReady()) {
+            Log.i(TAG, "截图方式: MediaProjection（会中断系统录屏）")
+            return true
+        }
+        // 3. 都没准备好 → 请求用户授权 MediaProjection
+        Log.w(TAG, "MediaProjection 未就绪，请求授权")
+        showToast("请授权屏幕录制权限")
+        sendBroadcast(Intent("com.example.action.REQUEST_SCREEN_CAPTURE"))
+        launchAppToForeground()
+        return false
+    }
+
+    /**
+     * 截取当前屏幕，截图前自动隐藏悬浮球 UI，避免截到自身。
+     * 优先使用 AccessibilityService（不中断系统录屏），不可用时回退 MediaProjection。
+     * callback 在主线程回调，bitmap==null 表示失败。
+     */
+    private fun captureBitmap(callback: (Bitmap?) -> Unit) {
+        // 截图前隐藏悬浮球和菜单，避免截到自身 UI
+        val ballWasVisible = floatingBall?.visibility == View.VISIBLE
+        floatingBall?.visibility = View.GONE
+        val menuWasShowing = menuPopup != null
+        if (menuWasShowing) removeMenu()
+
+        // 包裹 callback：截图后恢复悬浮 UI
+        val wrappedCallback: (Bitmap?) -> Unit = { bitmap ->
+            if (ballWasVisible) {
+                floatingBall?.visibility = View.VISIBLE
+            }
+            callback(bitmap)
+        }
+
+        // 1. 优先用 AccessibilityService 截图（Android 13+，不与系统录屏冲突）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val service = OcrAccessibilityService.instance
+            if (service != null) {
+                Log.i(TAG, "captureBitmap: 使用 AccessibilityService.takeScreenshot()")
+                // 延迟 300ms 让悬浮球隐藏后再截图
+                handler.postDelayed({
+                    service.takeScreenshotAsync(wrappedCallback)
+                }, 300)
+                return
+            }
+            Log.w(TAG, "captureBitmap: OcrAccessibilityService.instance 为 null — 无障碍服务未开启，回退 MediaProjection")
+        } else {
+            Log.w(TAG, "captureBitmap: API < 33 不支持 AccessibilityService，使用 MediaProjection")
+        }
+        // 2. 回退到 MediaProjection（已有 500ms 内部延迟，足够让悬浮球隐藏）
+        Log.i(TAG, "captureBitmap: 使用 MediaProjection")
+        ScreenCaptureManager.captureBitmapWithDelay(500, wrappedCallback)
+    }
+
+    /**
+     * 唤起 App 到前台（用于权限请求弹窗前先让 Activity 可见）
+     */
+    private fun launchAppToForeground() {
+        try {
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(launchIntent)
+        } catch (_: Exception) {}
+    }
+
     private fun isScreenCaptureReady(): Boolean {
         return try {
-            // 尝试获取一次截图，如果返回 null 说明未初始化
             val bitmap = ScreenCaptureManager.captureBitmap()
             bitmap != null
         } catch (_: Exception) {

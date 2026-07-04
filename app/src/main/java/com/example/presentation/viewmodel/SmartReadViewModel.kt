@@ -3,6 +3,7 @@ package com.example.presentation.viewmodel
 import android.app.Application
 import android.content.Intent
 import android.os.Build
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
@@ -175,6 +176,7 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch {
             fileDataSource.init()
             bookRepository.seedInitialBooks()
+            fileDataSource.migrateOldNotesHighlightIds()
             seedDemoNotes()
         }
 
@@ -287,6 +289,30 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun saveHighlightWithNote(colorHex: String, originalText: String, userInsight: String) {
+        val bookId = _currentBookId.value ?: return
+        if (originalText.isEmpty() || userInsight.isEmpty()) return
+
+        _isAiLoading.value = true
+        viewModelScope.launch {
+            val highlightId = saveHighlightUseCase(bookId, _currentPageIndex.value, originalText, colorHex).toInt()
+            saveNoteUseCase(bookId, originalText, userInsight, highlightId)
+            _selectedText.value = ""
+            _isAiLoading.value = false
+        }
+    }
+
+    fun updateNoteForHighlight(highlightId: Int, newUserNote: String) {
+        val bookId = _currentBookId.value ?: return
+        viewModelScope.launch {
+            val currentNotes = notesForCurrentBook.value
+            val note = currentNotes.find { it.highlightId == highlightId }
+            if (note != null && newUserNote != note.userNote) {
+                noteRepository.updateNote(note.copy(userNote = newUserNote))
+            }
+        }
+    }
+
     fun deleteHighlight(highlight: Highlight) {
         viewModelScope.launch {
             readerRepository.deleteHighlight(highlight)
@@ -321,7 +347,15 @@ class SmartReadViewModel(application: Application) : AndroidViewModel(applicatio
                 context.startService(serviceIntent)
             }
 
-            // 2. 再请求 MediaProjection 授权（Android 14+ 要求此时 Service 已运行）
+            // 2. 如果 AccessibilityService 已连接，不需要 MediaProjection 授权
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                com.example.presentation.OcrAccessibilityService.instance != null
+            ) {
+                Log.i("SmartReadVM", "无障碍服务已开启，跳过 MediaProjection 授权")
+                return
+            }
+
+            // 3. 否则请求 MediaProjection 授权（Android 14+ 要求此时 Service 已运行）
             pendingFloatingServiceEnable = true
             _screenCaptureRequest.trySend(Unit)
         } else {

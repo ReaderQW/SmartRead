@@ -66,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.domain.model.Book
+import com.example.domain.model.Highlight
 import com.example.domain.model.Note
 import com.example.presentation.ReadingReportDialog
 import com.example.presentation.SocraticFloatingPanel
@@ -90,6 +91,8 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
     val isAiLoading by viewModel.isAiLoading.collectAsStateWithLifecycle()
     val activeReport by viewModel.activeReport.collectAsStateWithLifecycle()
     val uiConfig by viewModel.uiConfig.collectAsStateWithLifecycle()
+
+    val notes by viewModel.notesForCurrentBook.collectAsStateWithLifecycle()
 
     val scope = rememberCoroutineScope()
 
@@ -118,6 +121,12 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
     var isCommentDialogShow by remember { mutableStateOf(false) }
     var commentInputText by remember { mutableStateOf("") }
     var chosenHighlightIdForComment by remember { mutableIntStateOf(0) }
+    var editingHighlight by remember { mutableStateOf<Highlight?>(null) }
+    /** 编辑高亮时弹窗中显示的原文（与 viewModel.selectedText 不同） */
+    var displayHighlightText by remember { mutableStateOf("") }
+    val editingAiSummary = remember(editingHighlight, notes) {
+        editingHighlight?.let { hl -> notes.find { it.highlightId == hl.id }?.aiSummary ?: "" } ?: ""
+    }
     var showGiftBox by remember { mutableStateOf(false) }
 
     LaunchedEffect(activeReport) {
@@ -177,7 +186,7 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
         containerColor = MaterialTheme.colorScheme.surface
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            ReaderPageContent(pageContent = pageContent, pageIndex = pageIndex, currentBookId = currentBookId, highlights = highlights, onPhraseSelected = { viewModel.selectTextSelection(it) }, onDeleteHighlight = { viewModel.deleteHighlight(it) }, onEditHighlight = { chosenHighlightIdForComment = it.id; commentInputText = it.comment ?: ""; isCommentDialogShow = true }, modifier = Modifier.fillMaxSize(), readingFontFamily = uiConfig.readingFont.toFontFamily())
+            ReaderPageContent(pageContent = pageContent, pageIndex = pageIndex, currentBookId = currentBookId, highlights = highlights, onPhraseSelected = { viewModel.selectTextSelection(it); displayHighlightText = "" }, onDeleteHighlight = { viewModel.deleteHighlight(it) }, onEditHighlight = { hl -> chosenHighlightIdForComment = hl.id; val note = notes.find { it.highlightId == hl.id }; commentInputText = note?.userNote ?: hl.comment ?: ""; editingHighlight = hl; displayHighlightText = hl.text; isCommentDialogShow = true }, modifier = Modifier.fillMaxSize(), readingFontFamily = uiConfig.readingFont.toFontFamily())
             if (selectedText.isNotEmpty()) {
                 ReaderSelectionToolbar(selectedText = selectedText, onClearSelection = { viewModel.clearTextSelection() }, onSaveHighlight = { viewModel.saveHighlight(it) }, onOpenSocraticWithText = { viewModel.setFloatingAssistantOpen(true); viewModel.sendSocraticMessage("关于这一句：'$it'，该如何深度切入反思？") }, onOpenCommentDialog = { commentInputText = ""; chosenHighlightIdForComment = 0; isCommentDialogShow = true }, modifier = Modifier.align(Alignment.BottomCenter))
             }
@@ -186,7 +195,7 @@ fun ReaderScreen(viewModel: SmartReadViewModel) {
             }
             OcrScanOverlay(isVisible = isOcrScanning, pageContent = pageContent)
             OcrNoteDialog(scannedOcrText = scannedOcrText, onDismiss = { viewModel.clearOcrResult() }, viewModel = viewModel)
-            ReaderCommentDialog(isVisible = isCommentDialogShow, chosenHighlightId = chosenHighlightIdForComment, initialCommentText = commentInputText, selectedText = selectedText, onDismiss = { isCommentDialogShow = false }, viewModel = viewModel)
+            ReaderCommentDialog(isVisible = isCommentDialogShow, chosenHighlightId = chosenHighlightIdForComment, initialCommentText = commentInputText, selectedText = displayHighlightText.ifEmpty { selectedText }, onDismiss = { isCommentDialogShow = false }, viewModel = viewModel, onDeleteHighlight = if (editingHighlight != null) {{ viewModel.deleteHighlight(editingHighlight!!); isCommentDialogShow = false }} else null, initialAiSummary = editingAiSummary)
             if (showGiftBox) { GiftBoxOpeningAnimation(onFinished = { showGiftBox = false }) }
             if (!showGiftBox) { activeReport?.let { ReadingReportDialog(report = it, viewModel = viewModel, onDismiss = { viewModel.closeReport() }) } }
             if (isAiLoading) { LoadingOverlay(title = "大模型智慧思考反刍中...", subtitle = "正在基于RAG与思想脉络织造启发...") }

@@ -34,6 +34,14 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import com.example.ui.components.TagChip
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 
 @Composable
 fun ReaderPageContent(
@@ -47,6 +55,27 @@ fun ReaderPageContent(
     modifier: Modifier = Modifier,
     readingFontFamily: FontFamily = FontFamily.Serif
 ) {
+    var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    val pageHighlights = remember(pageIndex, highlights) { highlights.filter { it.pageIndex == pageIndex } }
+    val annotatedText = remember(pageContent, pageHighlights) {
+        buildAnnotatedString {
+            append(pageContent)
+            pageHighlights.forEach { hl ->
+                val start = pageContent.indexOf(hl.text)
+                if (start >= 0) {
+                    val bgColor = Color(
+                        when (hl.colorHex) {
+                            "#FFEB3B" -> 0x7FFFE082
+                            "#69F0AE" -> 0x7FE8DEF8
+                            "#40C4FF" -> 0x7FD0BCFF
+                            else -> 0x7FF3EDF7
+                        }
+                    )
+                    addStyle(SpanStyle(background = bgColor), start, start + hl.text.length)
+                }
+            }
+        }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -73,13 +102,36 @@ fun ReaderPageContent(
             )
         }
 
-        // Interactive paragraph text body
+        // Interactive paragraph text body with gesture support
         Text(
-            text = pageContent,
+            text = annotatedText,
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 17.sp,
             fontFamily = readingFontFamily,
-            style = TextStyle(lineHeight = 31.sp, letterSpacing = 1.sp)
+            style = TextStyle(lineHeight = 31.sp, letterSpacing = 1.sp),
+            onTextLayout = { textLayoutResult = it },
+            modifier = Modifier
+                .pointerInput(pageContent, pageHighlights) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            textLayoutResult?.let { layout ->
+                                val charOffset = layout.getOffsetForPosition(offset)
+                                val clicked = pageHighlights.firstOrNull { hl ->
+                                    val start = pageContent.indexOf(hl.text)
+                                    start >= 0 && charOffset in start until (start + hl.text.length)
+                                }
+                                if (clicked != null) onEditHighlight(clicked)
+                            }
+                        },
+                        onLongPress = { offset ->
+                            textLayoutResult?.let { layout ->
+                                val charOffset = layout.getOffsetForPosition(offset)
+                                val phrase = extractPhraseAround(pageContent, charOffset)
+                                if (phrase.isNotBlank()) onPhraseSelected(phrase)
+                            }
+                        }
+                    )
+                }
         )
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -217,4 +269,38 @@ fun ReaderPageContent(
             }
         }
     }
+}
+
+// ── Helper functions ──
+
+/**
+ * 从触摸点向两端扩展，提取一个完整的句子或短语。
+ * 优先按句号/问号/感叹号/换行符分句，若找不到则取前后各 maxChars 个字符。
+ */
+private fun extractPhraseAround(text: String, offset: Int, maxChars: Int = 30): String {
+    if (text.isBlank()) return ""
+
+    val sentenceEnds = setOf('。', '！', '？', '\n')
+
+    // 向前扩展到句子开头或边界
+    var start = offset
+    while (start > 0 && text[start - 1] !in sentenceEnds && (offset - start) < maxChars) {
+        start--
+    }
+
+    // 向后扩展到句子结尾或边界
+    var end = offset
+    while (end < text.length && text[end] !in sentenceEnds && (end - offset) < maxChars) {
+        end++
+    }
+
+    // 如果选取的片段太短（< 6 个字），回退到固定范围
+    val phrase = text.substring(start, end).trim()
+    if (phrase.length < 6) {
+        val fallbackStart = maxOf(0, offset - 20)
+        val fallbackEnd = minOf(text.length, offset + 20)
+        return text.substring(fallbackStart, fallbackEnd).trim()
+    }
+
+    return phrase
 }

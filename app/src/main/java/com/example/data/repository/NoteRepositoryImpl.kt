@@ -25,7 +25,7 @@ class NoteRepositoryImpl(
     override fun getNotesForBook(bookId: Int): Flow<List<Note>> =
         fileDataSource.observeNotesForBook(bookId)
 
-    override suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String): Note = withContext(Dispatchers.IO) {
+    override suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String, highlightId: Int?): Note = withContext(Dispatchers.IO) {
         // 1. 并行获取 AI 洞察、标签和中文主旨命名（减少串行等待时间）
         val aiSummaryDeferred = async { aigc.noteInsight(originalText, userNote) }
         val tagsResponseDeferred = async { aigc.noteTags(originalText, userNote) }
@@ -43,6 +43,7 @@ class NoteRepositoryImpl(
 
         val note = Note(
             bookId = bookId,
+            highlightId = highlightId,
             originalText = originalText,
             userNote = userNote,
             aiSummary = aiSummary,
@@ -119,5 +120,9 @@ class NoteRepositoryImpl(
         knowledgeRepository.deleteNode(nodeId)
         knowledgeRepository.deleteEdgesForNode(nodeId)
         fileDataSource.deleteNote(note)
+    }
+
+    override suspend fun updateNote(note: Note) = withContext(Dispatchers.IO) {
+        fileDataSource.updateNote(note)
     }
 }

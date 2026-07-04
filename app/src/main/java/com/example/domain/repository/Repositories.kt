@@ -30,7 +30,8 @@ interface ReaderRepository {
 interface NoteRepository {
     val allNotes: Flow<List<Note>>
     fun getNotesForBook(bookId: Int): Flow<List<Note>>
-    suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String): Note
+    suspend fun saveNoteWithAiInsight(bookId: Int, originalText: String, userNote: String, highlightId: Int? = null): Note
+    suspend fun updateNote(note: Note)
     suspend fun deleteNote(note: Note)
 }
 

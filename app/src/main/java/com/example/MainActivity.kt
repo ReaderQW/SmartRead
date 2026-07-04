@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -21,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.example.presentation.OcrImageSelectDialog
 import com.example.presentation.SmartReadApp
 import com.example.presentation.SmartReadFloatingService
 import com.example.presentation.viewmodel.SmartReadViewModel
@@ -34,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var viewModel: SmartReadViewModel
     private var pendingOcrText by mutableStateOf<String?>(null)
     private var pendingScreenshotPath by mutableStateOf<String?>(null)
+    private var pendingAreaOcrScreenshotPath by mutableStateOf<String?>(null)
 
     @RequiresApi(Build.VERSION_CODES.O)
     private val mediaProjectionLauncher =
@@ -59,6 +62,12 @@ class MainActivity : ComponentActivity() {
                     pendingOcrText = text
                     pendingScreenshotPath = path
                 }
+                SmartReadFloatingService.ACTION_AREA_OCR -> {
+                    val path = intent.getStringExtra(SmartReadFloatingService.EXTRA_AREA_SCREENSHOT_PATH)
+                    if (path != null) {
+                        pendingAreaOcrScreenshotPath = path
+                    }
+                }
                 "com.example.action.REQUEST_SCREEN_CAPTURE" -> {
                     // 来自悬浮窗服务的请求：弹出屏幕录制授权
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -75,6 +84,7 @@ class MainActivity : ComponentActivity() {
         // 注册广播接收器（OCR 结果 + 屏幕录制授权请求）
         val filter = IntentFilter().apply {
             addAction(SmartReadFloatingService.ACTION_OCR_RESULT)
+            addAction(SmartReadFloatingService.ACTION_AREA_OCR)
             addAction("com.example.action.REQUEST_SCREEN_CAPTURE")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -103,16 +113,31 @@ class MainActivity : ComponentActivity() {
                 colorTheme = uiConfig.colorTheme
             ) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    SmartReadApp(
-                        viewModel = viewModel,
-                        modifier = Modifier.padding(innerPadding),
-                        pendingOcrText = pendingOcrText,
-                        pendingScreenshotPath = pendingScreenshotPath,
-                        onOcrHandled = {
-                            pendingOcrText = null
-                            pendingScreenshotPath = null
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // 主内容（在 Scaffold 的 padding 内）
+                        SmartReadApp(
+                            viewModel = viewModel,
+                            modifier = Modifier.padding(innerPadding),
+                            pendingOcrText = pendingOcrText,
+                            pendingScreenshotPath = pendingScreenshotPath,
+                            onOcrHandled = {
+                                pendingOcrText = null
+                                pendingScreenshotPath = null
+                            }
+                        )
+
+                        // 选区 OCR 全屏覆盖层（忽略 Scaffold padding，全屏渲染）
+                        val areaOcrPath = pendingAreaOcrScreenshotPath
+                        if (areaOcrPath != null) {
+                            OcrImageSelectDialog(
+                                screenshotPath = areaOcrPath,
+                                viewModel = viewModel,
+                                onDismiss = {
+                                    pendingAreaOcrScreenshotPath = null
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }

@@ -167,6 +167,33 @@ class FileDataSource(private val context: Context) {
         saveNotes()
     }
 
+    fun updateNote(note: Note) {
+        _notes.value = _notes.value.map { if (it.id == note.id) note else it }
+        saveNotes()
+    }
+
+    /** 一次性迁移：为旧 Note 回填 highlightId（通过 bookId + originalText 匹配） */
+    fun migrateOldNotesHighlightIds() {
+        var changed = false
+        val notes = _notes.value.toMutableList()
+        val highlights = _highlights.value
+        notes.forEachIndexed { i, note ->
+            if (note.highlightId == null) {
+                val match = highlights.firstOrNull { hl ->
+                    hl.bookId == note.bookId && hl.text == note.originalText
+                }
+                if (match != null) {
+                    notes[i] = note.copy(highlightId = match.id)
+                    changed = true
+                }
+            }
+        }
+        if (changed) {
+            _notes.value = notes
+            saveNotes()
+        }
+    }
+
     // ── Chat CRUD ──
     fun getMessagesForBook(bookId: Int): List<ChatMessage> =
         _chatMessages.value.filter { it.bookId == bookId }
