@@ -71,6 +71,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        viewModel = ViewModelProvider(this)[SmartReadViewModel::class.java]
 
         // 注册广播接收器（OCR 结果 + 屏幕录制授权请求）
         val filter = IntentFilter().apply {

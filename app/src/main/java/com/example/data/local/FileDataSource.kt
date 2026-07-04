@@ -14,10 +14,12 @@ import com.example.domain.model.KnowledgeNode
 import com.example.domain.model.Note
 import com.example.domain.model.NoteDepth
 import com.example.domain.model.ReadingReport
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -65,7 +67,7 @@ class FileDataSource(private val context: Context) {
         _readingReports.asStateFlow().map { reports -> reports.firstOrNull { it.bookId == bookId } }
 
     // ── 初始化 ──
-    suspend fun init() {
+    suspend fun init() = withContext(Dispatchers.IO) {
         loadAll()
         if (_books.value.isEmpty()) {
             copySeedFromAssets()
