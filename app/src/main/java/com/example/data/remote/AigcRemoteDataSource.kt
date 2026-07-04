@@ -65,6 +65,8 @@ class AigcRemoteDataSource(
     suspend fun noteTags(originalText: String, userNote: String): String =
         generate(Prompts.noteTagsPrompt(originalText, userNote), Prompts.noteTagsSystemPrompt)
             .replace(".", "")
+            .replace("，", ",")
+            .replace("、", ",")
             .trim()
 
     /**
@@ -225,7 +227,7 @@ object Prompts {
     const val noteTagsSystemPrompt = "你是一个极简标签分类器，只返回标签。"
 
     fun noteTagsPrompt(originalText: String, userNote: String) =
-        "根据以下原文和笔记生成 2 个简短标签，用英文逗号分隔，只返回标签：\n$originalText\n$userNote"
+        "根据以下原文和笔记生成 2 个简短的中文标签，用英文逗号分隔，只返回标签：\n$originalText\n$userNote"
 
     const val chineseTitleSystemPrompt =
         "你是一个中文主旨提炼专家。你的任务是根据原文摘录和读者感悟，提炼出一个 4-8 个汉字的简洁主旨名称，用于知识图谱节点标签。要求：精准概括核心思想、使用中文、不包含标点符号、不包含'感悟''笔记''思考'等冗余词。"

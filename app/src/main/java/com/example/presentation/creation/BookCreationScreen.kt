@@ -132,81 +132,50 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 封面预览/上传
-                Box(
-                    modifier = Modifier
-                        .size(width = 100.dp, height = 140.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (coverUri == null)
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primary,
-                                        MaterialTheme.colorScheme.tertiary
-                                    )
+            Box(
+                modifier = Modifier
+                    .size(width = 100.dp, height = 140.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (coverUri == null)
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.tertiary
                                 )
-                            else
-                                Brush.verticalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.surface,
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    )
+                            )
+                        else
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.surface,
+                                    MaterialTheme.colorScheme.surfaceVariant
                                 )
-                        )
-                        .clickable { imagePickerLauncher.launch("image/*") },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (coverUri != null) {
-                        AsyncImage(
-                            model = coverUri,
-                            contentDescription = "封面预览",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                Icons.Default.Add,
-                                "上传封面",
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(32.dp)
                             )
-                            Text(
-                                "上传封面",
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontSize = 10.sp,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // AI 生成封面按钮
-                Column {
-                    OutlinedButton(
-                        onClick = {
-                            isAiGeneratingCover = true
-                            viewModel.generateArtImage()
-                        },
-                        enabled = !isAiGeneratingCover && title.isNotBlank()
-                    ) {
-                        if (isAiGeneratingCover) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                        }
-                        Text("AI 生成封面", fontSize = 13.sp)
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "需要先填写书名",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 11.sp
                     )
+                    .clickable { imagePickerLauncher.launch("image/*") },
+                contentAlignment = Alignment.Center
+            ) {
+                if (coverUri != null) {
+                    AsyncImage(
+                        model = coverUri,
+                        contentDescription = "封面预览",
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Add,
+                            "上传封面",
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text(
+                            "上传封面",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 10.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 
@@ -257,21 +226,6 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                 maxLines = 3,
                 modifier = Modifier.fillMaxWidth()
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        isAiGeneratingSummary = true
-                        // AI 生成简介
-                        kotlinx.coroutines.MainScope()
-                    },
-                    enabled = title.isNotBlank()
-                ) {
-                    Text("AI 生成简介", fontSize = 12.sp)
-                }
-            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -323,7 +277,7 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            "TXT / PDF / WPS",
+                            "TXT 纯文本",
                             fontSize = 11.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -387,7 +341,7 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
                 ) {
                     Icon(Icons.Default.UploadFile, null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(fileName ?: "选择文件 (TXT/PDF/DOC/DOCX)")
+                    Text(fileName ?: "选择文件 (*.txt)")
                 }
                 if (fileName != null) {
                     Spacer(modifier = Modifier.height(4.dp))
@@ -442,6 +396,10 @@ fun BookCreationScreen(viewModel: SmartReadViewModel) {
             // ── 提交按钮 ──
             Button(
                 onClick = {
+                    if (contentMode == "file" && fileUri == null) {
+                        android.widget.Toast.makeText(context, "请先选择要上传的 TXT 文件", android.widget.Toast.LENGTH_SHORT).show()
+                        return@Button
+                    }
                     val type = if (contentMode == "file") "FILE" else "FLOATING"
                     val resolvedCoverUri = coverUri?.let { copyToInternal(context, it) }
                     val resolvedFileUri = fileUri?.let { copyToInternal(context, it) }
